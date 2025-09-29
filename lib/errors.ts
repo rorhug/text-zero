@@ -4,6 +4,7 @@ export type ErrorType =
   | 'forbidden'
   | 'not_found'
   | 'rate_limit'
+  | 'server_error'
   | 'offline';
 
 export type Surface =

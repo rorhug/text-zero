@@ -5,6 +5,11 @@ import {
 } from 'ai';
 import { gateway } from '@ai-sdk/gateway';
 import { isTestEnvironment } from '../constants';
+import { createOpenAI } from '@ai-sdk/openai';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -32,5 +37,6 @@ export const myProvider = isTestEnvironment
         }),
         'title-model': gateway.languageModel('xai/grok-2-1212'),
         'artifact-model': gateway.languageModel('xai/grok-2-1212'),
+        'complete-chat': openai('gpt-5-chat-latest'),
       },
     });
