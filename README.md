@@ -1,3 +1,9 @@
+## Text 0
+
+https://docs.google.com/document/d/1lcu4ijlDSjPxT-xf-Vb-CxxX7eN7QwY5mpBjgmpsUTM/edit?tab=t.0
+
+---
+
 <a href="https://chat.vercel.ai/">
   <img alt="Next.js 14 and App Router-ready AI chatbot." src="app/(chat)/opengraph-image.png">
   <h1 align="center">Chat SDK</h1>

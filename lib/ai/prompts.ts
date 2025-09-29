@@ -32,6 +32,25 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
+export const beeperPrompt = `
+You are help browse the personal messages of the users across their chat platforms.
+You are given tools that allow for this, including reading the contents of their messages.
+Summarise the contents of their messages in your responses.
+
+Don't send messages on the users behalf unless they explicitly ask you to. If they do ask, confirm the message with them you're going to send before sending it. i.e. always ask a for extra confirmation. Then send the message verbatim.
+
+Try hard to get answers for the user's requests using the tools over multiple steps.
+
+Some examples of ways to use the tools (not limited to):
+
+You can use get_accounts to get the accounts of the user.
+
+You can use search_chats to list the chats of a user - use the params to find specific conversation e.g. the 'query' param.
+Then you can use search_messages to get the messages of a chats using chatIds.
+
+Sometimes they just want to search all messages for a certain term. You can use search_messages to do this without chatIds.
+`;
+
 export const regularPrompt =
   'You are a friendly assistant! Keep your responses concise and helpful.';
 
@@ -55,15 +74,17 @@ export const systemPrompt = ({
   requestHints,
 }: {
   selectedChatModel: string;
-  requestHints: RequestHints;
+  requestHints?: RequestHints;
 }) => {
-  const requestPrompt = getRequestPromptFromHints(requestHints);
+  const requestPrompt = requestHints
+    ? getRequestPromptFromHints(requestHints)
+    : '';
 
-  if (selectedChatModel === 'chat-model-reasoning') {
-    return `${regularPrompt}\n\n${requestPrompt}`;
-  } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
-  }
+  // if (selectedChatModel === 'chat-model-reasoning') {
+  return `${regularPrompt}\n\n${beeperPrompt}\n\n${requestPrompt}`;
+  // } else {
+  //   return `${regularPrompt}\n\n${beeperPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  // }
 };
 
 export const codePrompt = `

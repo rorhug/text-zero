@@ -6,6 +6,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
+  experimental_createMCPClient,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
@@ -39,6 +40,8 @@ import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import type { ChatModel } from '@/lib/ai/models';
 import type { VisibilityType } from '@/components/visibility-selector';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 export const maxDuration = 60;
 
@@ -51,12 +54,12 @@ export function getStreamContext() {
         waitUntil: after,
       });
     } catch (error: any) {
-      if (error.message.includes('REDIS_URL')) {
+      if (error.message.includes('Invalid URL')) {
         console.log(
           ' > Resumable streams are disabled due to missing REDIS_URL',
         );
       } else {
-        console.error(error);
+        console.error('lack of redis url', error);
       }
     }
   }
@@ -153,39 +156,116 @@ export async function POST(request: Request) {
 
     let finalUsage: LanguageModelUsage | undefined;
 
+    // Beeper MCP: initialize client and fetch tools before streaming
+    let beeperMcpClient: {
+      close: () => Promise<void>;
+      tools: () => Promise<Record<string, any>>;
+    } | null = null;
+    let beeperTools: Record<string, any> = {};
+    const mcpToken = process.env.BEEPER_MCP_TOKEN;
+    if (mcpToken) {
+      try {
+        try {
+          const sseTransport = new SSEClientTransport(
+            new URL('http://localhost:23373/v0/sse'),
+            {
+              // eventSourceInit: {
+              //   headers: { Authorization: `Bearer ${mcpToken}` } as any,
+              // },
+              requestInit: {
+                headers: { Authorization: `Bearer ${mcpToken}` } as any,
+              },
+            },
+          );
+          beeperMcpClient = await experimental_createMCPClient({
+            transport: sseTransport,
+          });
+        } catch (_) {
+          const httpTransport = new StreamableHTTPClientTransport(
+            new URL('http://localhost:23373/v0/mcp'),
+            {
+              requestInit: {
+                headers: { Authorization: `Bearer ${mcpToken}` } as any,
+              },
+            },
+          );
+          beeperMcpClient = await experimental_createMCPClient({
+            transport: httpTransport,
+          });
+        }
+
+        // console.log('beeperMcpClient', beeperMcpClient);
+
+        if (beeperMcpClient) {
+          beeperTools = (await beeperMcpClient.tools()) || {};
+          // console.log('beeperMcpClient.tools()', beeperTools);
+        }
+      } catch (err) {
+        console.warn('Beeper MCP tools unavailable:', err);
+        beeperMcpClient = null;
+        beeperTools = {};
+      }
+    }
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
+        const mergedTools = {
+          // getWeather,
+          // createDocument: createDocument({ session, dataStream }),
+          // updateDocument: updateDocument({ session, dataStream }),
+          // requestSuggestions: requestSuggestions({
+          //   session,
+          //   dataStream,
+          // }),
+          ...beeperTools,
+        } as Record<string, any>;
+
+        const activeTools =
+          selectedChatModel === 'chat-model-reasoning'
+            ? []
+            : [
+                // 'getWeather',
+                // 'createDocument',
+                // 'updateDocument',
+                // 'requestSuggestions',
+                ...Object.keys(beeperTools),
+              ];
+
+        console.log('activeTools', activeTools);
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          system: systemPrompt({
+            selectedChatModel,
+            requestHints,
+          }),
           messages: convertToModelMessages(uiMessages),
-          stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
-                ],
+          stopWhen: stepCountIs(10),
+          experimental_activeTools: activeTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
+          tools: mergedTools,
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: 'stream-text',
           },
-          onFinish: ({ usage }) => {
+          onFinish: async ({ usage }) => {
             finalUsage = usage;
             dataStream.write({ type: 'data-usage', data: usage });
+            if (beeperMcpClient) {
+              try {
+                await beeperMcpClient.close();
+              } catch {}
+            }
+          },
+          onError: async () => {
+            if (beeperMcpClient) {
+              try {
+                await beeperMcpClient.close();
+              } catch {}
+            }
+          },
+          onStepFinish: ({ toolCalls, toolResults }) => {
+            console.log('toolCalls', toolCalls);
           },
         });
 

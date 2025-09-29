@@ -85,7 +85,7 @@
         "noHeadImportInDocument": "warn",
         "noIrregularWhitespace": "warn",
         "noStaticElementInteractions": "warn",
-        "useSortedClasses": "error",
+        "useSortedClasses": "off",
         "useValidAutocomplete": "warn"
       }
     }
