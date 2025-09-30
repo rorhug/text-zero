@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import { LoaderIcon } from '@/components/icons';
+import { VersionBadge } from '@/components/version-badge';
 import type { BeeperDesktop } from '@beeper/desktop-api';
 
 type Chat = BeeperDesktop.Chats.Chat;
@@ -312,29 +313,32 @@ export function InboxContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setFilter('unresponded')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filter === 'unresponded'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Unresponded
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filter === 'all'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              All
-            </button>
+          <div className="flex items-center gap-4">
+            <VersionBadge />
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setFilter('unresponded')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  filter === 'unresponded'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Unresponded
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  filter === 'all'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                All
+              </button>
+            </div>
           </div>
         </div>
       </div>

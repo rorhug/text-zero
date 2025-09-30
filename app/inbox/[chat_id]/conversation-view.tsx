@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import { LoaderIcon } from '@/components/icons';
+import { VersionBadge } from '@/components/version-badge';
 import type { BeeperDesktop } from '@beeper/desktop-api';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 
@@ -58,6 +59,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
   const [suggestion, setSuggestion] = useState('');
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR<MessagesResponse>(
     `/inbox/${chatId}/messages`,
@@ -76,7 +78,15 @@ export function ConversationView({ chatId }: { chatId: string }) {
           method: 'POST',
         });
         const result = await response.json();
-        setSuggestion(result.suggestion || '');
+        const suggestionText = result.suggestion || '';
+        setSuggestion(suggestionText);
+        // Set AI suggestion to input and select all text
+        setMessageText(suggestionText);
+        // Focus input and select all text
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
       } catch (error) {
         console.error('Failed to load suggestion:', error);
       } finally {
@@ -88,6 +98,18 @@ export function ConversationView({ chatId }: { chatId: string }) {
 
     loadSuggestion();
   }, [chatId, data?.messages]);
+
+  // Add keyboard handler for left arrow key to go back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && document.activeElement !== inputRef.current) {
+        router.push('/inbox');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
@@ -154,17 +176,20 @@ export function ConversationView({ chatId }: { chatId: string }) {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <div className="border-b border-border/40 p-4 flex items-center gap-3">
-        <button
-          onClick={() => router.push('/inbox')}
-          className="text-muted-foreground hover:text-foreground"
-          type="button"
-        >
-          ← Back to Inbox
-        </button>
-        <h1 className="text-lg font-semibold">
-          Conversation ({messages.length} messages)
-        </h1>
+      <div className="border-b border-border/40 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/inbox')}
+            className="text-muted-foreground hover:text-foreground"
+            type="button"
+          >
+            ← Back to Inbox
+          </button>
+          <h1 className="text-lg font-semibold">
+            Conversation ({messages.length} messages)
+          </h1>
+        </div>
+        <VersionBadge />
       </div>
 
       {/* Messages */}
@@ -212,6 +237,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
       <div className="border-t border-border/40 p-4">
         <div className="flex gap-2">
           <textarea
+            ref={inputRef}
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             placeholder="Type your message..."
