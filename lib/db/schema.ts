@@ -147,3 +147,22 @@ export const stream = sqliteTable('Stream', {
 });
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const userSettings = sqliteTable('UserSettings', {
+  userId: text('userId').primaryKey().notNull().references(() => user.id),
+  suggestionPrompt: text('suggestionPrompt'),
+  followUpPrompt: text('followUpPrompt'),
+  messageLimit: integer('messageLimit').default(30),
+  suggestionsLimit: integer('suggestionsLimit').default(3),
+  conversationsLimit: integer('conversationsLimit').default(10),
+  followUpTimeLimit: integer('followUpTimeLimit').default(5), // in minutes
+  followUpTimeUnit: text('followUpTimeUnit').default('minutes'), // 'minutes', 'hours', 'days'
+  afterMessageAction: text('afterMessageAction').default('stay'), // 'stay', 'back_to_inbox', 'next_conversation'
+  // Reminder settings (only tomorrow times are configurable)
+  remindTomorrowMorning: text('remindTomorrowMorning').default('09:00'), // 9 AM
+  remindTomorrowMidday: text('remindTomorrowMidday').default('12:00'), // 12 PM
+  remindTomorrowEvening: text('remindTomorrowEvening').default('18:00'), // 6 PM
+  dismissOnIncomingMessage: integer('dismissOnIncomingMessage').default(1), // 1 = true, 0 = false
+});
+
+export type UserSettings = InferSelectModel<typeof userSettings>;

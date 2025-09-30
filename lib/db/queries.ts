@@ -29,6 +29,8 @@ import {
   type DBMessage,
   type Chat,
   stream,
+  userSettings,
+  type UserSettings,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import { generateUUID } from '../utils';
@@ -568,6 +570,114 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get stream ids by chat id',
+    );
+  }
+}
+
+export async function getUserSettings({
+  userId,
+}: {
+  userId: string;
+}): Promise<UserSettings | null> {
+  try {
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+    return settings ?? null;
+  } catch (error) {
+    console.error('getUserSettings failed', { userId, error });
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user settings',
+    );
+  }
+}
+
+export async function upsertUserSettings({
+  userId,
+  suggestionPrompt,
+  followUpPrompt,
+  messageLimit,
+  suggestionsLimit,
+  conversationsLimit,
+  followUpTimeLimit,
+  followUpTimeUnit,
+  afterMessageAction,
+  remindTomorrowMorning,
+  remindTomorrowMidday,
+  remindTomorrowEvening,
+  dismissOnIncomingMessage,
+}: {
+  userId: string;
+  suggestionPrompt: string | null;
+  followUpPrompt: string | null;
+  messageLimit?: number;
+  suggestionsLimit?: number;
+  conversationsLimit?: number;
+  followUpTimeLimit?: number;
+  followUpTimeUnit?: string;
+  afterMessageAction?: string;
+  remindTomorrowMorning?: string;
+  remindTomorrowMidday?: string;
+  remindTomorrowEvening?: string;
+  dismissOnIncomingMessage?: number;
+}) {
+  try {
+    // First check if user exists, if not create a guest user
+    const existingUser = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+    if (existingUser.length === 0) {
+      // Create a guest user with this ID
+      await db.insert(user).values({ 
+        id: userId, 
+        email: `guest-${Date.now()}@example.com`,
+        password: generateHashedPassword(generateUUID())
+      });
+    }
+
+    const existing = await getUserSettings({ userId });
+    if (existing) {
+      return await db
+        .update(userSettings)
+        .set({ 
+          suggestionPrompt, 
+          followUpPrompt, 
+          messageLimit, 
+          suggestionsLimit, 
+          conversationsLimit,
+          followUpTimeLimit,
+          followUpTimeUnit,
+          afterMessageAction,
+          remindTomorrowMorning,
+          remindTomorrowMidday,
+          remindTomorrowEvening,
+          dismissOnIncomingMessage
+        })
+        .where(eq(userSettings.userId, userId));
+    }
+    return await db
+      .insert(userSettings)
+      .values({ 
+        userId, 
+        suggestionPrompt, 
+        followUpPrompt, 
+        messageLimit, 
+        suggestionsLimit, 
+        conversationsLimit,
+        followUpTimeLimit,
+        followUpTimeUnit,
+        afterMessageAction,
+        remindTomorrowMorning,
+        remindTomorrowMidday,
+        remindTomorrowEvening,
+        dismissOnIncomingMessage
+      });
+  } catch (error) {
+    console.error('upsertUserSettings failed', { userId, suggestionPrompt, error });
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to upsert user settings',
     );
   }
 }

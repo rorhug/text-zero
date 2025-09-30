@@ -5,6 +5,7 @@ import { getDocumentById, saveSuggestions } from '@/lib/db/queries';
 import type { Suggestion } from '@/lib/db/schema';
 import { generateUUID } from '@/lib/utils';
 import { myProvider } from '../providers';
+import { getUserSettings } from '@/lib/db/queries';
 import type { ChatMessage } from '@/lib/types';
 
 interface RequestSuggestionsProps {
@@ -36,10 +37,35 @@ export const requestSuggestions = ({
         Omit<Suggestion, 'userId' | 'createdAt' | 'documentCreatedAt'>
       > = [];
 
+      let systemPrompt =
+        'You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words.';
+
+      // Determine desired suggestions count (1-5)
+      let suggestionsLimit = 3;
+      if (session.user?.id) {
+        try {
+          const settings = await getUserSettings({ userId: session.user.id });
+          if (settings?.suggestionPrompt) {
+            systemPrompt = settings.suggestionPrompt;
+          }
+          if (settings?.suggestionsLimit) {
+            suggestionsLimit = Math.min(5, Math.max(1, settings.suggestionsLimit));
+          }
+        } catch {}
+      }
+
+      if (session.user?.id) {
+        try {
+          const settings = await getUserSettings({ userId: session.user.id });
+          if (settings?.suggestionPrompt) {
+            systemPrompt = settings.suggestionPrompt;
+          }
+        } catch {}
+      }
+
       const { elementStream } = streamObject({
         model: myProvider.languageModel('artifact-model'),
-        system:
-          'You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.',
+        system: systemPrompt,
         prompt: document.content,
         output: 'array',
         schema: z.object({
@@ -49,7 +75,9 @@ export const requestSuggestions = ({
         }),
       });
 
+      let count = 0;
       for await (const element of elementStream) {
+        if (count >= suggestionsLimit) break;
         // @ts-ignore todo: fix type
         const suggestion: Suggestion = {
           originalText: element.originalSentence,
@@ -67,6 +95,7 @@ export const requestSuggestions = ({
         });
 
         suggestions.push(suggestion);
+        count++;
       }
 
       if (session.user?.id) {
