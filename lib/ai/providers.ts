@@ -30,13 +30,23 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        'chat-model': gateway.languageModel('xai/grok-2-vision-1212'),
-        'chat-model-reasoning': wrapLanguageModel({
-          model: gateway.languageModel('xai/grok-3-mini'),
+        // 'chat-model': gateway.languageModel('xai/grok-2-vision-1212'),
+        // 'chat-model-reasoning': wrapLanguageModel({
+        //   model: gateway.languageModel('xai/grok-3-mini'),
+        //   middleware: extractReasoningMiddleware({ tagName: 'think' }),
+        // }),
+        // 'title-model': gateway.languageModel('xai/grok-2-1212'),
+        // 'artifact-model': gateway.languageModel('xai/grok-2-1212'),
+        'chat-model': wrapLanguageModel({
+          model: openai('gpt-5'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
-        'title-model': gateway.languageModel('xai/grok-2-1212'),
-        'artifact-model': gateway.languageModel('xai/grok-2-1212'),
+        'chat-model-reasoning': wrapLanguageModel({
+          model: openai('gpt-5'),
+          middleware: extractReasoningMiddleware({ tagName: 'think' }),
+        }),
+        'title-model': openai('gpt-5-mini'),
+        'artifact-model': openai('gpt-5-mini'),
         'complete-chat': openai('gpt-5-chat-latest'),
       },
     });
