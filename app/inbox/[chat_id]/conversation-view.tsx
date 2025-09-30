@@ -59,6 +59,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
   const [suggestion, setSuggestion] = useState('');
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR<MessagesResponse>(
@@ -82,11 +83,6 @@ export function ConversationView({ chatId }: { chatId: string }) {
         setSuggestion(suggestionText);
         // Set AI suggestion to input and select all text
         setMessageText(suggestionText);
-        // Focus input and select all text
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.select();
-        }
       } catch (error) {
         console.error('Failed to load suggestion:', error);
       } finally {
@@ -99,11 +95,36 @@ export function ConversationView({ chatId }: { chatId: string }) {
     loadSuggestion();
   }, [chatId, data?.messages]);
 
-  // Add keyboard handler for left arrow key to go back
+  // Add keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && document.activeElement !== inputRef.current) {
-        router.push('/inbox');
+      const isInputFocused = document.activeElement === inputRef.current;
+
+      // Escape to unfocus input
+      if (e.key === 'Escape' && isInputFocused) {
+        inputRef.current?.blur();
+        return;
+      }
+
+      // Only handle these keys when input is not focused
+      if (!isInputFocused) {
+        // Focus input with f and select all text
+        if (e.key === 'f') {
+          e.preventDefault();
+          inputRef.current?.focus();
+          inputRef.current?.select();
+          return;
+        }
+
+        // Go back to inbox with left arrow or h
+        if (e.key === 'ArrowLeft' || e.key === 'h') {
+          router.push('/inbox');
+        }
+
+        // Archive with e or a
+        if (e.key === 'e' || e.key === 'a') {
+          handleArchiveConversation();
+        }
       }
     };
 
@@ -145,6 +166,35 @@ export function ConversationView({ chatId }: { chatId: string }) {
 
   const handleUseSuggestion = () => {
     setMessageText(suggestion);
+  };
+
+  const handleArchiveConversation = async () => {
+    if (isArchiving) return;
+
+    setIsArchiving(true);
+    try {
+      const response = await fetch('/inbox/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId: chatId,
+          archived: true,
+        }),
+      });
+
+      if (response.ok) {
+        // Navigate back to inbox after archiving
+        router.push('/inbox');
+      } else {
+        console.error('Failed to archive conversation');
+      }
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   if (isLoading) {
@@ -259,7 +309,8 @@ export function ConversationView({ chatId }: { chatId: string }) {
           </button>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Press Enter to send, Shift+Enter for new line
+          Press f to focus, Enter to send, Shift+Enter for new line, ←/h to go
+          back, e/a to archive
         </div>
       </div>
     </div>
