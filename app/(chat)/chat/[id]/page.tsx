@@ -9,70 +9,75 @@ import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import { convertToUIMessages } from '@/lib/utils';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const { id } = params;
-  const chat = await getChatById({ id });
+  redirect('/inbox');
+  redirect('/inbox');
 
-  if (!chat) {
-    notFound();
-  }
+  return <></>;
 
-  const session = await auth();
+  // const params = await props.params;
+  // const { id } = params;
+  // const chat = await getChatById({ id });
 
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
+  // if (!chat) {
+  //   notFound();
+  // }
 
-  if (chat.visibility === 'private') {
-    if (!session.user) {
-      return notFound();
-    }
+  // const session = await auth();
 
-    if (session.user.id !== chat.userId) {
-      return notFound();
-    }
-  }
+  // if (!session) {
+  //   redirect('/api/auth/guest');
+  // }
 
-  const messagesFromDb = await getMessagesByChatId({
-    id,
-  });
+  // if (chat.visibility === 'private') {
+  //   if (!session.user) {
+  //     return notFound();
+  //   }
 
-  const uiMessages = convertToUIMessages(messagesFromDb);
+  //   if (session.user.id !== chat.userId) {
+  //     return notFound();
+  //   }
+  // }
 
-  const cookieStore = await cookies();
-  const chatModelFromCookie = cookieStore.get('chat-model');
+  // const messagesFromDb = await getMessagesByChatId({
+  //   id,
+  // });
 
-  if (!chatModelFromCookie) {
-    return (
-      <>
-        <Chat
-          id={chat.id}
-          initialMessages={uiMessages}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
-          session={session}
-          autoResume={true}
-          initialLastContext={chat.lastContext ?? undefined}
-        />
-        <DataStreamHandler />
-      </>
-    );
-  }
+  // const uiMessages = convertToUIMessages(messagesFromDb);
 
-  return (
-    <>
-      <Chat
-        id={chat.id}
-        initialMessages={uiMessages}
-        initialChatModel={chatModelFromCookie.value}
-        initialVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
-        session={session}
-        autoResume={true}
-        initialLastContext={chat.lastContext ?? undefined}
-      />
-      <DataStreamHandler />
-    </>
-  );
+  // const cookieStore = await cookies();
+  // const chatModelFromCookie = cookieStore.get('chat-model');
+
+  // if (!chatModelFromCookie) {
+  //   return (
+  //     <>
+  //       <Chat
+  //         id={chat.id}
+  //         initialMessages={uiMessages}
+  //         initialChatModel={DEFAULT_CHAT_MODEL}
+  //         initialVisibilityType={chat.visibility}
+  //         isReadonly={session?.user?.id !== chat.userId}
+  //         session={session}
+  //         autoResume={true}
+  //         initialLastContext={chat.lastContext ?? undefined}
+  //       />
+  //       <DataStreamHandler />
+  //     </>
+  //   );
+  // }
+
+  // return (
+  //   <>
+  //     <Chat
+  //       id={chat.id}
+  //       initialMessages={uiMessages}
+  //       initialChatModel={chatModelFromCookie.value}
+  //       initialVisibilityType={chat.visibility}
+  //       isReadonly={session?.user?.id !== chat.userId}
+  //       session={session}
+  //       autoResume={true}
+  //       initialLastContext={chat.lastContext ?? undefined}
+  //     />
+  //     <DataStreamHandler />
+  //   </>
+  // );
 }

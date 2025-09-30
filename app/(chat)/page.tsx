@@ -8,48 +8,52 @@ import { auth } from '../(auth)/auth';
 import { redirect } from 'next/navigation';
 
 export default async function Page() {
-  const session = await auth();
+  redirect('/inbox');
 
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
+  return <></>;
 
-  const id = generateUUID();
+  // const session = await auth();
 
-  const cookieStore = await cookies();
-  const modelIdFromCookie = cookieStore.get('chat-model');
+  // if (!session) {
+  //   redirect('/api/auth/guest');
+  // }
 
-  if (!modelIdFromCookie) {
-    return (
-      <>
-        <Chat
-          key={id}
-          id={id}
-          initialMessages={[]}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType="private"
-          isReadonly={false}
-          session={session}
-          autoResume={false}
-        />
-        <DataStreamHandler />
-      </>
-    );
-  }
+  // const id = generateUUID();
 
-  return (
-    <>
-      <Chat
-        key={id}
-        id={id}
-        initialMessages={[]}
-        initialChatModel={modelIdFromCookie.value}
-        initialVisibilityType="private"
-        isReadonly={false}
-        session={session}
-        autoResume={false}
-      />
-      <DataStreamHandler />
-    </>
-  );
+  // const cookieStore = await cookies();
+  // const modelIdFromCookie = cookieStore.get('chat-model');
+
+  // if (!modelIdFromCookie) {
+  //   return (
+  //     <>
+  //       <Chat
+  //         key={id}
+  //         id={id}
+  //         initialMessages={[]}
+  //         initialChatModel={DEFAULT_CHAT_MODEL}
+  //         initialVisibilityType="private"
+  //         isReadonly={false}
+  //         session={session}
+  //         autoResume={false}
+  //       />
+  //       <DataStreamHandler />
+  //     </>
+  //   );
+  // }
+
+  // return (
+  //   <>
+  //     <Chat
+  //       key={id}
+  //       id={id}
+  //       initialMessages={[]}
+  //       initialChatModel={modelIdFromCookie.value}
+  //       initialVisibilityType="private"
+  //       isReadonly={false}
+  //       session={session}
+  //       autoResume={false}
+  //     />
+  //     <DataStreamHandler />
+  //   </>
+  // );
 }

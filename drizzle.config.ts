@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { defineConfig } from 'drizzle-kit';
-import { join } from 'path';
+import { join } from 'node:path';
 
 config({
   path: '.env.local',
