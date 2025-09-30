@@ -37,10 +37,7 @@ export const myProvider = isTestEnvironment
         // }),
         // 'title-model': gateway.languageModel('xai/grok-2-1212'),
         // 'artifact-model': gateway.languageModel('xai/grok-2-1212'),
-        'chat-model': wrapLanguageModel({
-          model: openai('gpt-5'),
-          middleware: extractReasoningMiddleware({ tagName: 'think' }),
-        }),
+        'chat-model': openai('gpt-5'),
         'chat-model-reasoning': wrapLanguageModel({
           model: openai('gpt-5'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),

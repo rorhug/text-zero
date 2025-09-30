@@ -302,7 +302,7 @@ export function InboxContent() {
       <div className="border-b border-border/40 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Inbox</h1>
+            <h1 className="text-2xl font-bold">Text ZERO</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {filteredConversations.length} conversation
               {filteredConversations.length !== 1 ? 's' : ''}
