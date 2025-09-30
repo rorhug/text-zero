@@ -47,3 +47,7 @@ The application uses:
 Both directories are automatically created on first run and are gitignored.
 
 > Note: You should not commit your `.env.local` file as it contains sensitive API keys.
+
+---
+
+special thanks to Dawid
