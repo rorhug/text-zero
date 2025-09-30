@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || 'local-development-secret-min-32-chars-long',
     secureCookie: !isDevelopmentEnvironment,
   });
 

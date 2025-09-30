@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
 
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || 'local-development-secret-min-32-chars-long',
     secureCookie: !isDevelopmentEnvironment,
   });
 
