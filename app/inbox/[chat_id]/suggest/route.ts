@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import type { NextRequest } from 'next/server';
 import { myProvider } from '@/lib/ai/providers';
+import { getUserSettings } from '@/lib/db/queries';
 
 export async function POST(
   request: NextRequest,
@@ -31,10 +32,30 @@ export async function POST(
 
     const chatId = (await params).chat_id;
 
+    // Get user settings for message limit
+    let messageLimit = 30;
+    try {
+      const settings = await getUserSettings({ userId: session.user.id });
+      if (settings?.messageLimit) {
+        messageLimit = settings.messageLimit;
+      }
+    } catch {
+      // Use default if settings can't be loaded
+    }
+
+    // Get user settings for suggestions count (1-5)
+    let suggestionsLimit = 3;
+    try {
+      const settings = await getUserSettings({ userId: session.user.id });
+      if (settings?.suggestionsLimit) {
+        suggestionsLimit = Math.min(5, Math.max(1, settings.suggestionsLimit));
+      }
+    } catch {}
+
     // Get recent messages for context
     const messagesPage = await client.messages.search({
       chatIDs: [chatId, chatId], // Using the workaround for the array API issue
-      limit: 30,
+      limit: messageLimit,
     });
 
     const messages = messagesPage.items.reverse(); // Oldest first
@@ -63,7 +84,18 @@ export async function POST(
       })
       .join('\n');
 
-    const prompt = `Based on this conversation history with timestamps, suggest a natural and appropriate response. Pay special attention to the timing of messages - more recent messages should heavily influence your response. Consider the conversation flow and respond appropriately to the most recent context.
+    // Always use the custom suggestion prompt if available, regardless of who sent the last message
+    let systemPrompt = '';
+    try {
+      const settings = await getUserSettings({ userId: session.user.id });
+      systemPrompt = settings?.suggestionPrompt || 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
+    } catch {
+      systemPrompt = 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
+    }
+
+    const prompt = `${systemPrompt}
+
+Based on this conversation history with timestamps, suggest ${suggestionsLimit} natural and appropriate responses. Pay special attention to the timing of messages - more recent messages should heavily influence your response. Consider the conversation flow and respond appropriately to the most recent context.
 
 The conversation shows when each message was sent relative to now. Recent messages (within hours) are much more relevant than older ones.
 
@@ -72,13 +104,23 @@ ${conversationHistory}
 
 ---END OF CONVERSATION HISTORY---
 
-Provide a suggested response that:
-1. Responds to the most recent message context
-2. Matches the conversation tone and style
-3. Is natural and conversational
-4. Only provide the message text, nothing else
+Provide exactly ${suggestionsLimit} alternative suggested responses that:
+1. Respond to the most recent message context
+2. Match the conversation tone and style
+3. Are natural and conversational
 
-Suggested response:`;
+Important formatting rules:
+- Output each suggestion on its own line
+- Do not number the suggestions
+- Do not include any extra text besides the suggestions themselves`;
+
+    // Log what we're sending to OpenAI
+    console.log('=== OPENAI REQUEST ===');
+    console.log('System Prompt:', systemPrompt);
+    console.log('Full Prompt:', prompt);
+    console.log('Model:', 'complete-chat');
+    console.log('Suggestions Limit:', suggestionsLimit);
+    console.log('=== END OPENAI REQUEST ===');
 
     const result = await generateText({
       model: myProvider.languageModel('complete-chat'),
@@ -91,9 +133,29 @@ Suggested response:`;
       },
     });
 
-    return Response.json({
-      suggestion: result.text.trim(),
-    });
+    // Log OpenAI response
+    console.log('=== OPENAI RESPONSE ===');
+    console.log('Response:', result.text);
+    console.log('=== END OPENAI RESPONSE ===');
+
+    const lines = result.text
+      .split('\n')
+      .map((l) => l.trim().replace(/^[-*]\s*/, ''))
+      .filter((l) => l.length > 0);
+
+    const suggestions = lines.slice(0, suggestionsLimit);
+
+    // Fallback: if model returned a single paragraph, cut into up to N sentences
+    if (suggestions.length === 0 && result.text.trim().length > 0) {
+      const fallback = result.text
+        .split(/[\n\.]/)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .slice(0, suggestionsLimit);
+      return Response.json({ suggestions: fallback });
+    }
+
+    return Response.json({ suggestions });
   } catch (error) {
     console.error('Error generating suggestion:', error);
     return new ChatSDKError(

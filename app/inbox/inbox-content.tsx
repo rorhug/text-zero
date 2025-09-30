@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import { LoaderIcon } from '@/components/icons';
@@ -15,6 +15,9 @@ interface ChatWithLastMessage extends Chat {
   lastMessage: Message | null;
   isUnresponded: boolean;
   isUnread: boolean;
+  followUpCount: number;
+  lastOtherMessageTime: string | null;
+  platform: string;
 }
 
 interface ConversationsResponse {
@@ -27,11 +30,13 @@ function ConversationRow({
   isSelected,
   onClick,
   isArchiving = false,
+  currentFilter,
 }: {
   conversation: ChatWithLastMessage;
   isSelected: boolean;
   onClick: () => void;
   isArchiving?: boolean;
+  currentFilter: 'unresponded' | 'noAnswer' | 'all';
 }) {
   const {
     isUnresponded,
@@ -40,6 +45,9 @@ function ConversationRow({
     lastActivity,
     title,
     unreadCount,
+    followUpCount,
+    lastOtherMessageTime,
+    platform,
   } = conversation;
 
   const displayName = title || 'Unknown Chat';
@@ -61,6 +69,52 @@ function ConversationRow({
     } else {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
+  };
+
+  const formatRelativeTime = (timestamp?: string) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return diffInMinutes <= 1 ? 'just now' : `${diffInMinutes}m ago`;
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h ago`;
+    } else if (diffInDays < 7) {
+      return `${Math.floor(diffInDays)}d ago`;
+    } else if (diffInDays < 30) {
+      const weeks = Math.floor(diffInDays / 7);
+      return `${weeks}w ago`;
+    } else {
+      const months = Math.floor(diffInDays / 30);
+      return `${months}mo ago`;
+    }
+  };
+
+  const getPlatformColor = (platform: string) => {
+    const colors: Record<string, string> = {
+      whatsapp: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      telegram: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      signal: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      instagram: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+      facebook: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      messenger: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      twitter: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200',
+      linkedin: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      slack: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      discord: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+      sms: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      imessage: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      googlechat: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      rcs: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      matrix: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      unknown: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+    };
+    return colors[platform.toLowerCase()] || colors.unknown;
   };
 
   // Get the first participant that's not the user for avatar
@@ -117,6 +171,9 @@ function ConversationRow({
               {status && (
                 <span className="text-xs text-muted-foreground">{status}</span>
               )}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPlatformColor(platform)}`}>
+                {platform}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {displayTimestamp && (
@@ -129,6 +186,20 @@ function ConversationRow({
               )}
             </div>
           </div>
+
+          {/* Sales info only for "No Answer" filter */}
+          {currentFilter === 'noAnswer' && lastMessage?.isSender && lastOtherMessageTime && (
+            <div className="flex items-center gap-3 mb-1 text-xs text-muted-foreground">
+              <span className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 px-2 py-0.5 rounded">
+                {formatRelativeTime(lastOtherMessageTime)} last response
+              </span>
+              {followUpCount > 0 && (
+                <span className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
+                  {followUpCount} follow-up{followUpCount !== 1 ? 's' : ''} sent
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="text-sm text-muted-foreground truncate">
             {lastMessageSender && !lastMessage?.isSender && (
@@ -147,27 +218,108 @@ function ConversationRow({
 
 export function InboxContent() {
   const router = useRouter();
-  const [filter, setFilter] = useState<'unresponded' | 'all'>('unresponded');
+  const searchParams = useSearchParams();
+  
+  // Get filter from URL or default to 'unresponded'
+  const rawFilter = searchParams.get('filter');
+  const normalizedFilter = (rawFilter === 'unresponded' || rawFilter === 'noAnswer' || rawFilter === 'all')
+    ? rawFilter
+    : 'unresponded';
+  const [filter, setFilter] = useState<'unresponded' | 'noAnswer' | 'all'>(normalizedFilter as 'unresponded' | 'noAnswer' | 'all');
+  
+  // Get sort from URL or default to 'lastActivity'
+  const sortBy = searchParams.get('sortBy') || 'lastActivity';
+  
+  // Get platform filter from URL
+  const platformFilter = searchParams.get('platform') || 'all';
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [archivingConversation, setArchivingConversation] = useState<
     string | null
   >(null);
 
   const { data, error, isLoading, mutate } = useSWR<ConversationsResponse>(
-    '/inbox/api',
+    `/inbox/api?sortBy=${sortBy}`,
     fetcher,
     {
       refreshInterval: 30000, // Refresh every 30 seconds
+      onSuccess: (data) => {
+        console.log('=== INBOX DATA LOADED ===');
+        console.log('Conversations:', data?.conversations?.length || 0);
+        if (data?.conversations?.length > 0) {
+          console.log('First conversation:', data.conversations[0]);
+          console.log('Platforms found:', [...new Set(data.conversations.map(c => c.platform))]);
+          
+          // Log all conversations with their details
+          console.log('=== ALL CONVERSATIONS ===');
+          data.conversations.forEach((conv, index) => {
+            console.log(`Conversation ${index}:`, {
+              id: conv.id,
+              title: conv.title,
+              platform: conv.platform,
+              accountID: conv.accountID,
+              network: conv.network,
+              lastMessage: conv.lastMessage ? {
+                id: conv.lastMessage.id,
+                text: conv.lastMessage.text,
+                isSender: conv.lastMessage.isSender,
+                timestamp: conv.lastMessage.timestamp
+              } : null,
+              isUnread: conv.isUnread,
+              isUnresponded: conv.isUnresponded,
+              unreadCount: conv.unreadCount,
+              followUpCount: conv.followUpCount,
+              lastOtherMessageTime: conv.lastOtherMessageTime
+            });
+            
+            // Special debug for Jenny's conversation
+            if (conv.id === '!A2sc3epuuEVEd4quBWWn:beeper.local') {
+              console.log('🔍 JENNY CONVERSATION DEBUG:', {
+                followUpCount: conv.followUpCount,
+                lastMessage: conv.lastMessage,
+                isUnresponded: conv.isUnresponded,
+                lastOtherMessageTime: conv.lastOtherMessageTime
+              });
+            }
+          });
+          console.log('=== END ALL CONVERSATIONS ===');
+        }
+        console.log('=== END INBOX DATA ===');
+      },
+      onError: (error) => {
+        console.error('Inbox API Error:', error);
+      }
     },
   );
 
-  // Filter conversations based on the current filter
+  // Debug: Log when component mounts and data changes
+  useEffect(() => {
+    console.log('=== INBOX COMPONENT MOUNTED ===');
+    console.log('isLoading:', isLoading);
+    console.log('error:', error);
+    console.log('data:', data);
+  }, [isLoading, error, data]);
+
+  // Get unique platforms for filter dropdown
+  const availablePlatforms = data?.conversations 
+    ? [...new Set(data.conversations.map(conv => conv.platform))].sort()
+    : [];
+
+  // Filter conversations based on the current filter and platform
   const filteredConversations =
     data?.conversations.filter((conv) => {
+      // Apply conversation filter
       if (filter === 'unresponded') {
-        return conv.isUnresponded || conv.isUnread;
+        if (!(conv.isUnresponded || conv.isUnread)) return false;
+      } else if (filter === 'noAnswer') {
+        if (!(conv.lastMessage?.isSender && !conv.isUnread)) return false;
       }
-      return true; // 'all' shows everything
+      
+      // Apply platform filter
+      if (platformFilter !== 'all' && conv.platform !== platformFilter) {
+        return false;
+      }
+      
+      return true;
     }) || [];
 
   // Reset selected index when conversations change
@@ -240,7 +392,7 @@ export function InboxContent() {
           e.preventDefault();
           if (filteredConversations[selectedIndex]) {
             router.push(
-              `/inbox/${encodeURIComponent(filteredConversations[selectedIndex].id)}`,
+              `/inbox/${encodeURIComponent(filteredConversations[selectedIndex].id)}?filter=${filter}&sortBy=${sortBy}&platform=${platformFilter}`,
             );
           }
           break;
@@ -270,7 +422,7 @@ export function InboxContent() {
   const handleConversationClick = (index: number) => {
     setSelectedIndex(index);
     router.push(
-      `/inbox/${encodeURIComponent(filteredConversations[index].id)}`,
+      `/inbox/${encodeURIComponent(filteredConversations[index].id)}?filter=${filter}&sortBy=${sortBy}&platform=${platformFilter}`,
     );
   };
 
@@ -310,6 +462,9 @@ export function InboxContent() {
               {filter === 'unresponded' && data?.conversations && (
                 <span> ({data.conversations.length} total)</span>
               )}
+              {filter === 'noAnswer' && data?.conversations && (
+                <span> ({data.conversations.length} total)</span>
+              )}
             </p>
           </div>
 
@@ -318,7 +473,10 @@ export function InboxContent() {
             <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
               <button
                 type="button"
-                onClick={() => setFilter('unresponded')}
+                onClick={() => {
+                  setFilter('unresponded');
+                  router.push(`/inbox?filter=unresponded&sortBy=${sortBy}&platform=${platformFilter}`);
+                }}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   filter === 'unresponded'
                     ? 'bg-background shadow-sm text-foreground'
@@ -329,7 +487,24 @@ export function InboxContent() {
               </button>
               <button
                 type="button"
-                onClick={() => setFilter('all')}
+                onClick={() => {
+                  setFilter('noAnswer');
+                  router.push(`/inbox?filter=noAnswer&sortBy=${sortBy}&platform=${platformFilter}`);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  filter === 'noAnswer'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                No Answer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilter('all');
+                  router.push(`/inbox?filter=all&sortBy=${sortBy}&platform=${platformFilter}`);
+                }}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   filter === 'all'
                     ? 'bg-background shadow-sm text-foreground'
@@ -339,6 +514,61 @@ export function InboxContent() {
                 All
               </button>
             </div>
+            
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                const newSortBy = e.target.value;
+                router.push(`/inbox?filter=${filter}&sortBy=${newSortBy}&platform=${platformFilter}`);
+              }}
+              className="px-3 py-1 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="lastActivity">Last Activity</option>
+              <option value="name">Name A-Z</option>
+              <option value="unreadCount">Unread Count</option>
+              <option value="lastResponse">Last Response</option>
+              <option value="followUpCount">Follow-ups</option>
+              <option value="lastMessage">Last Message</option>
+            </select>
+            
+            {/* Platform Filter Dropdown */}
+            <select
+              value={platformFilter}
+              onChange={(e) => {
+                const newPlatform = e.target.value;
+                router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${newPlatform}`);
+              }}
+              className="px-3 py-1 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Platforms</option>
+              {availablePlatforms.map(platform => (
+                <option key={platform} value={platform}>
+                  {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={() => router.push('/profile')}
+              className="p-2 rounded-md hover:bg-muted transition-colors"
+              title="Profile Settings"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -350,9 +580,17 @@ export function InboxContent() {
               <p className="text-muted-foreground">
                 {filter === 'unresponded'
                   ? 'No unresponded conversations'
+                  : filter === 'noAnswer'
+                  ? 'No conversations with no answer'
                   : 'No conversations found'}
               </p>
               {filter === 'unresponded' && data?.conversations?.length && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Switch to "All" to see {data.conversations.length} total
+                  conversations
+                </p>
+              )}
+              {filter === 'noAnswer' && data?.conversations?.length && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Switch to "All" to see {data.conversations.length} total
                   conversations
@@ -368,6 +606,7 @@ export function InboxContent() {
               isSelected={index === selectedIndex}
               onClick={() => handleConversationClick(index)}
               isArchiving={archivingConversation === conversation.id}
+              currentFilter={filter}
             />
           ))
         )}
