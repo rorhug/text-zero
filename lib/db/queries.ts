@@ -12,8 +12,10 @@ import {
   lt,
   type SQL,
 } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 import {
   user,
@@ -39,9 +41,15 @@ import type { LanguageModelV2Usage } from '@ai-sdk/provider';
 // use the Drizzle adapter for Auth.js / NextAuth
 // https://authjs.dev/reference/adapter/drizzle
 
-// biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!);
-const db = drizzle(client);
+// Create data directory if it doesn't exist
+const dataDir = join(process.cwd(), 'data');
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = process.env.DATABASE_URL || join(dataDir, 'sqlite.db');
+const sqlite = new Database(dbPath);
+const db = drizzle(sqlite);
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
