@@ -161,6 +161,7 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
       providerOptions: {
         openai: {
           reasoning: { effort: 'minimal' },
+          response_format: { type: 'json_object' },
         },
       },
     });
