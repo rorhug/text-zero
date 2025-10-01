@@ -515,6 +515,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
             </label>
           </div>
           <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Remind me later in:</span>
             <button
               onClick={() => handleSetReminder(5)}
               disabled={isSettingReminder}
