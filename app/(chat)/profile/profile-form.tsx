@@ -40,7 +40,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           summaryPrompt: null,
           messageLimit: 30,
           suggestionsLimit: 3,
-          conversationsLimit: 10,
+          conversationsLimit: 50,
           followUpTimeLimit: 5,
           followUpTimeUnit: 'minutes',
           afterMessageAction: 'stay',
@@ -84,7 +84,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           summaryPrompt: formData.get('summaryPrompt') as string || null,
           messageLimit: parseInt(formData.get('messageLimit') as string) || 30,
           suggestionsLimit: Math.min(5, Math.max(1, parseInt(formData.get('suggestionsLimit') as string) || 3)),
-          conversationsLimit: Math.min(200, Math.max(5, parseInt(formData.get('conversationsLimit') as string) || 10)),
+          conversationsLimit: Math.min(200, Math.max(5, parseInt(formData.get('conversationsLimit') as string) || 50)),
           followUpTimeLimit: parseInt(formData.get('followUpTimeLimit') as string) || 5,
           followUpTimeUnit: formData.get('followUpTimeUnit') as string || 'minutes',
           afterMessageAction: formData.get('afterMessageAction') as string || 'stay',
@@ -183,13 +183,13 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           <input
             type="number"
             name="conversationsLimit"
-            defaultValue={settings?.conversationsLimit ?? 10}
+            defaultValue={settings?.conversationsLimit ?? 50}
             min="5"
             max="200"
             className="w-32 rounded-md border border-zinc-300 bg-background p-2 text-sm dark:border-zinc-700"
           />
           <p className="text-xs text-muted-foreground">
-            Number of conversations to load initially (5-200)
+            Number of conversations to load initially (5-200, default 50)
           </p>
         </div>
 
