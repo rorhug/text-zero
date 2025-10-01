@@ -79,9 +79,6 @@ export function ConversationView({
   const { data, error, isLoading, mutate } = useSWR<MessagesResponse>(
     `/inbox/${chatId}/messages`,
     fetcher,
-    {
-      on,
-    },
   );
 
   // Scroll to bottom immediately when messages load
