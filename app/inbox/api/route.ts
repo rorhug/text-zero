@@ -159,10 +159,6 @@ export async function GET(request: NextRequest) {
           // Use user-defined time limit for follow-up separation
           let followUpCount = 0;
           if (lastOtherMessageIndex >= 0) {
-            console.log(`=== FOLLOW-UP CALCULATION for ${chat.id} ===`);
-            console.log(`Last other message index: ${lastOtherMessageIndex}`);
-            console.log(`Total messages: ${messages.length}`);
-            console.log(`Last other message:`, messages[lastOtherMessageIndex]);
             
             // Get user settings for follow-up time limit
             const userSettings = await getUserSettings({ userId: session.user.id });
@@ -177,7 +173,7 @@ export async function GET(request: NextRequest) {
               timeLimitMs = timeLimit * 24 * 60 * 60000;
             }
             
-            console.log(`Follow-up time limit: ${timeLimit} ${timeUnit} (${timeLimitMs}ms)`);
+            
             
             let lastUserMessageTime = null;
             
@@ -191,29 +187,12 @@ export async function GET(request: NextRequest) {
                 if (lastUserMessageTime === null || 
                     (currentMessageTime - lastUserMessageTime) > timeLimitMs) {
                   followUpCount++;
-                  console.log(`Follow-up ${followUpCount}:`, {
-                    index: i,
-                    text: messages[i].text?.substring(0, 50) + '...',
-                    timestamp: messages[i].timestamp,
-                    isSender: messages[i].isSender,
-                    timeSinceLastUser: lastUserMessageTime ? 
-                      `${Math.round((currentMessageTime - lastUserMessageTime) / 60000)} minutes` : 
-                      'first message'
-                  });
-                } else {
-                  console.log(`Skipped follow-up (within ${timeLimit} ${timeUnit}):`, {
-                    index: i,
-                    text: messages[i].text?.substring(0, 50) + '...',
-                    timestamp: messages[i].timestamp,
-                    timeSinceLastUser: `${Math.round((currentMessageTime - lastUserMessageTime) / 60000)} minutes`
-                  });
                 }
                 
                 lastUserMessageTime = currentMessageTime;
               }
             }
-            console.log(`Total follow-ups counted: ${followUpCount}`);
-            console.log(`=== END FOLLOW-UP CALCULATION ===`);
+            
           }
 
           // Calculate time since last other message

@@ -12,6 +12,12 @@ export async function POST(
   { params }: { params: Promise<{ chat_id: string }> },
 ) {
   const session = await auth();
+  // Respect UI decision to avoid mismatches: client sends whether UI shows follow-up
+  let clientIsFollowUp = false;
+  try {
+    const body = await request.json().catch(() => ({} as any));
+    clientIsFollowUp = Boolean(body?.isFollowUpUI);
+  } catch {}
 
   if (!session?.user) {
     return new ChatSDKError('unauthorized:chat').toResponse();
@@ -80,7 +86,7 @@ export async function POST(
     const now = new Date();
     const conversationHistory = messages
       .map((msg) => {
-        const sender = msg.isSender ? 'You' : msg.senderName || 'Other';
+        const sender = msg.isSender ? 'Me' : msg.senderName || 'Other';
         const timestamp = new Date(msg.timestamp);
         const diffInHours =
           (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
@@ -103,21 +109,86 @@ export async function POST(
     // Get user settings for prompts and summary
     let systemPrompt = '';
     let summaryPrompt = '';
+    let followUpPrompt = '';
     let enableSummary = false;
+    let followUpTimeLimit = 5;
+    let followUpTimeUnit: 'minutes' | 'hours' | 'days' = 'minutes';
     try {
       const settings = await getUserSettings({ userId: session.user.id });
       systemPrompt = settings?.suggestionPrompt || 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
       summaryPrompt = settings?.summaryPrompt || 'Provide a brief 1-2 sentence summary of the conversation context and current situation. Focus on the key points and what needs to be addressed next.';
+      followUpPrompt = settings?.followUpPrompt || '';
       enableSummary = settings?.enableSummary === 1;
+      if (typeof settings?.followUpTimeLimit === 'number') {
+        followUpTimeLimit = settings.followUpTimeLimit;
+      }
+      if (typeof settings?.followUpTimeUnit === 'string') {
+        const unit = settings.followUpTimeUnit as 'minutes' | 'hours' | 'days';
+        followUpTimeUnit = unit || 'minutes';
+      }
     } catch {
       systemPrompt = 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
       summaryPrompt = 'Provide a brief 1-2 sentence summary of the conversation context and current situation. Focus on the key points and what needs to be addressed next.';
+      followUpPrompt = '';
       enableSummary = false;
+      followUpTimeLimit = 5;
+      followUpTimeUnit = 'minutes';
     }
 
-    const prompt = `${systemPrompt}
+    // Determine follow-up situation: server check (last message sent by user)
+    const isFollowUpServer = messages.length > 0 && !!messages[messages.length - 1]?.isSender;
 
-Chat: ${chatTitle}
+    // Additional guard: only consider follow-up if enough time has passed since user's last message
+    let timeLimitMsForFollowUp = followUpTimeLimit * 60000;
+    if (followUpTimeUnit === 'hours') timeLimitMsForFollowUp = followUpTimeLimit * 60 * 60000;
+    else if (followUpTimeUnit === 'days') timeLimitMsForFollowUp = followUpTimeLimit * 24 * 60 * 60000;
+
+    let includeByTiming = false;
+    if (isFollowUpServer) {
+      const lastMsg = messages[messages.length - 1];
+      const lastUserTime = new Date(lastMsg.timestamp).getTime();
+      includeByTiming = Date.now() - lastUserTime > timeLimitMsForFollowUp;
+    }
+
+    // (Optional) diagnostics for understanding mismatches
+    try {
+      let lastOtherMessageIndex = -1;
+      for (let i = 0; i < messages.length; i++) {
+        if (!messages[i].isSender) lastOtherMessageIndex = i;
+      }
+      let followUpCount = 0;
+      if (lastOtherMessageIndex >= 0) {
+        let timeLimitMs = followUpTimeLimit * 60000;
+        if (followUpTimeUnit === 'hours') timeLimitMs = followUpTimeLimit * 60 * 60000;
+        else if (followUpTimeUnit === 'days') timeLimitMs = followUpTimeLimit * 24 * 60 * 60000;
+        let lastUserMessageTime: number | null = null;
+        for (let i = lastOtherMessageIndex + 1; i < messages.length; i++) {
+          if (messages[i].isSender) {
+            const t = new Date(messages[i].timestamp).getTime();
+            if (lastUserMessageTime === null || t - lastUserMessageTime > timeLimitMs) {
+              followUpCount++;
+            }
+            lastUserMessageTime = t;
+          }
+        }
+      }
+      console.log('[SUGGEST] Follow-up diagnostics:', {
+        clientIsFollowUp,
+        isFollowUpServer,
+        followUpTimeLimit,
+        followUpTimeUnit,
+        messagesCount: messages.length,
+      });
+    } catch {}
+
+    // Final inclusion: only if UI says follow-up AND server agrees AND timing gate passes
+    const includeFollowUpGuidance = Boolean(
+      followUpPrompt && clientIsFollowUp && isFollowUpServer && includeByTiming,
+    );
+
+    const prompt = `${includeFollowUpGuidance ? followUpPrompt : systemPrompt}
+
+Chat User Name: ${chatTitle}
 Current time: ${now.toLocaleString()}
 
 Based on this conversation history with timestamps, suggest ${suggestionsLimit} natural and appropriate responses. Pay special attention to the timing of messages - more recent messages should heavily influence your response. Consider the conversation flow and respond appropriately to the most recent context.
@@ -152,6 +223,11 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
     console.log('Suggestions Limit:', suggestionsLimit);
     console.log('Enable Summary:', enableSummary);
     console.log('Summary Prompt:', summaryPrompt);
+    console.log('Follow-up Prompt:', followUpPrompt);
+    console.log('Is Follow-up UI:', clientIsFollowUp);
+    console.log('Is Follow-up Server (last message from user):', isFollowUpServer);
+    console.log('Follow-up Timing Gate (since last user msg > limit):', includeByTiming);
+    console.log('Include Follow-up Guidance:', includeFollowUpGuidance);
     console.log('=== END OPENAI REQUEST ===');
 
     const result = await generateText({
@@ -183,10 +259,7 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
         cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
       
-      console.log('=== CLEANED RESPONSE TEXT ===');
-      console.log('Original:', result.text);
-      console.log('Cleaned:', cleanedText);
-      console.log('=== END CLEANED RESPONSE TEXT ===');
+      
       
       // Try to parse JSON response
       const jsonResponse = JSON.parse(cleanedText);

@@ -369,11 +369,14 @@ export function InboxContent() {
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Disable inbox shortcuts while command palette is open
+      if (document.body.classList.contains('cmdk-open')) return;
       if (filteredConversations.length === 0) return;
 
       switch (e.key) {
         case 'ArrowUp':
         case 'k':
+          if (e.metaKey || e.ctrlKey) return; // don't block Cmd/Ctrl+K (command palette)
           e.preventDefault();
           setSelectedIndex((prev) =>
             prev > 0 ? prev - 1 : filteredConversations.length - 1,
@@ -381,6 +384,7 @@ export function InboxContent() {
           break;
         case 'ArrowDown':
         case 'j':
+          if (e.metaKey || e.ctrlKey) return; // don't block Cmd/Ctrl shortcuts
           e.preventDefault();
           setSelectedIndex((prev) =>
             prev < filteredConversations.length - 1 ? prev + 1 : 0,

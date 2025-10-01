@@ -131,7 +131,12 @@ export function ConversationView({ chatId }: { chatId: string }) {
       console.log('chatId', chatId);
       setIsLoadingSuggestion(true);
       try {
-        const response = await fetch(`/inbox/${chatId}/suggest`, { method: 'POST' });
+        const isFollowUpUI = data.messages.length > 0 && !!data.messages[data.messages.length - 1]?.isSender;
+        const response = await fetch(`/inbox/${chatId}/suggest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isFollowUpUI }),
+        });
         const result = await response.json();
         const list: string[] = result.suggestions || (result.suggestion ? [result.suggestion] : []);
         setSuggestions(list);
@@ -188,6 +193,8 @@ export function ConversationView({ chatId }: { chatId: string }) {
   // Add keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Disable chat view shortcuts while command palette is open
+      if (document.body.classList.contains('cmdk-open')) return;
       // Left arrow to go back to inbox
       if (e.key === 'ArrowLeft' && document.activeElement !== inputRef.current) {
         router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${platform}`);
