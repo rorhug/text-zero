@@ -173,8 +173,23 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
     console.log('=== END OPENAI RESPONSE ===');
 
     try {
+      // Clean the response text - remove markdown code blocks if present
+      let cleanedText = result.text.trim();
+      
+      // Remove ```json and ``` markers
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      console.log('=== CLEANED RESPONSE TEXT ===');
+      console.log('Original:', result.text);
+      console.log('Cleaned:', cleanedText);
+      console.log('=== END CLEANED RESPONSE TEXT ===');
+      
       // Try to parse JSON response
-      const jsonResponse = JSON.parse(result.text);
+      const jsonResponse = JSON.parse(cleanedText);
       const suggestions: string[] = [];
       const summary = jsonResponse.summary || '';
       
