@@ -74,10 +74,14 @@ export function ConversationView({
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const suggestionRef = useRef<string>('');
   const messageTextRef = useRef<string>('');
+  const hasLoadedSuggestionRef = useRef<string>(''); // Track chatId to prevent duplicate fetches
 
   const { data, error, isLoading, mutate } = useSWR<MessagesResponse>(
     `/inbox/${chatId}/messages`,
     fetcher,
+    {
+      on,
+    },
   );
 
   // Scroll to bottom immediately when messages load
@@ -91,6 +95,10 @@ export function ConversationView({
   useEffect(() => {
     const loadSuggestion = async () => {
       if (!data?.messages?.length) return;
+
+      // Prevent duplicate fetches for the same chat
+      if (hasLoadedSuggestionRef.current === chatId) return;
+      hasLoadedSuggestionRef.current = chatId;
 
       console.log('chatId', chatId);
       setIsLoadingSuggestion(true);

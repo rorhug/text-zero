@@ -317,7 +317,7 @@ export function InboxContent({
           e.preventDefault();
           setFilter('unresponded');
           break;
-        case 'a':
+        case 'i':
           e.preventDefault();
           setFilter('all');
           break;
@@ -414,7 +414,7 @@ export function InboxContent({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Shortcut keys="a" text="all" />
+                <Shortcut keys="i" text="inbox" />
               </button>
             </div>
           </div>
@@ -432,7 +432,7 @@ export function InboxContent({
               </p>
               {filter === 'unresponded' && data?.conversations?.length && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Switch to "All" to see {data.conversations.length} total
+                  Switch to "Inbox" to see {data.conversations.length} total
                   conversations
                 </p>
               )}
@@ -454,10 +454,10 @@ export function InboxContent({
 
       {filteredConversations.length > 0 && (
         <div className="border-t border-border/40 px-4 py-2 text-xs text-muted-foreground gap-1 flex">
-          {/* Use ↑↓ or j/k to navigate, → or Enter to open, e to archive, u/a to filter */}
+          {/* Use ↑↓ or j/k to navigate, → or Enter to open, e to archive, u/i to filter */}
           <Shortcut keys="hjkl / ˂↑↓˃" text="navigate" />
           <Shortcut keys="e" text="archive" />
-          <Shortcut keys="u/a" text="filter" />
+          <Shortcut keys="u/i" text="filter" />
         </div>
       )}
     </div>
