@@ -10,7 +10,6 @@ import { convertToUIMessages } from '@/lib/utils';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   redirect('/inbox');
-  redirect('/inbox');
 
   return <></>;
 
