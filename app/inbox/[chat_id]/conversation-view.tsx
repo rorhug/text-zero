@@ -156,6 +156,13 @@ export function ConversationView({
           if (suggestionRef.current) {
             setMessageText(suggestionRef.current);
             inputRef.current?.focus();
+            // Auto-resize textarea after setting text
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.style.height = 'auto';
+                inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+              }
+            }, 0);
           }
           return;
         }
