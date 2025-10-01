@@ -7,6 +7,7 @@ import { fetcher } from '@/lib/utils';
 import { LoaderIcon } from '@/components/icons';
 import { VersionBadge } from '@/components/version-badge';
 import type { BeeperDesktop } from '@beeper/desktop-api';
+import Shortcut from '@/components/shortcut';
 
 type Chat = BeeperDesktop.Chats.Chat;
 type Message = BeeperDesktop.Message;
@@ -27,11 +28,13 @@ function ConversationRow({
   isSelected,
   onClick,
   isArchiving = false,
+  isSelectedChat = false,
 }: {
   conversation: ChatWithLastMessage;
   isSelected: boolean;
   onClick: () => void;
   isArchiving?: boolean;
+  isSelectedChat?: boolean;
 }) {
   const {
     isUnresponded,
@@ -75,12 +78,16 @@ function ConversationRow({
 
   const status = isUnread ? 'Unread' : isUnresponded ? 'Unresponded' : null;
 
+  const platform = conversation.network;
+
   return (
     <div
       className={`w-full border-b border-border/40 hover:bg-muted/50 transition-colors cursor-pointer ${
-        isSelected
-          ? 'bg-muted border-l-4 border-l-primary'
-          : 'border-l-4 border-l-muted'
+        isSelectedChat
+          ? 'bg-primary/10 border-l-4 border-l-primary'
+          : isSelected
+            ? 'bg-muted border-l-4 border-l-primary/50'
+            : 'border-l-4 border-l-muted'
       } ${isArchiving ? 'opacity-50' : ''}`}
       onClick={onClick}
     >
@@ -117,6 +124,11 @@ function ConversationRow({
               {status && (
                 <span className="text-xs text-muted-foreground">{status}</span>
               )}
+              {platform && (
+                <span className="text-xs text-muted-foreground">
+                  {platform}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {displayTimestamp && (
@@ -145,7 +157,13 @@ function ConversationRow({
   );
 }
 
-export function InboxContent() {
+export function InboxContent({
+  onChatSelect,
+  selectedChatId,
+}: {
+  onChatSelect?: (chatId: string) => void;
+  selectedChatId?: string | null;
+}) {
   const router = useRouter();
   const [filter, setFilter] = useState<'unresponded' | 'all'>('unresponded');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -219,8 +237,22 @@ export function InboxContent() {
     (e: KeyboardEvent) => {
       if (filteredConversations.length === 0) return;
 
+      // Don't handle shortcuts when any input/textarea is focused
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      // Don't handle single-key shortcuts when Cmd is pressed (preserve browser shortcuts)
+      if (e.metaKey || e.ctrlKey) return;
+
       switch (e.key) {
         case 'ArrowUp':
+          if (!e.altKey) {
+            e.preventDefault();
+            setSelectedIndex((prev) =>
+              prev > 0 ? prev - 1 : filteredConversations.length - 1,
+            );
+          }
+          break;
         case 'k':
           e.preventDefault();
           setSelectedIndex((prev) =>
@@ -228,6 +260,13 @@ export function InboxContent() {
           );
           break;
         case 'ArrowDown':
+          if (!e.altKey) {
+            e.preventDefault();
+            setSelectedIndex((prev) =>
+              prev < filteredConversations.length - 1 ? prev + 1 : 0,
+            );
+          }
+          break;
         case 'j':
           e.preventDefault();
           setSelectedIndex((prev) =>
@@ -235,21 +274,52 @@ export function InboxContent() {
           );
           break;
         case 'ArrowRight':
+          if (!e.altKey) {
+            e.preventDefault();
+            if (filteredConversations[selectedIndex]) {
+              const chatId = filteredConversations[selectedIndex].id;
+              if (onChatSelect) {
+                onChatSelect(chatId);
+                window.history.replaceState(
+                  null,
+                  '',
+                  `/inbox/${encodeURIComponent(chatId)}`,
+                );
+              } else {
+                router.push(`/inbox/${encodeURIComponent(chatId)}`);
+              }
+            }
+          }
+          break;
         case 'l':
-        case 'Enter':
           e.preventDefault();
           if (filteredConversations[selectedIndex]) {
-            router.push(
-              `/inbox/${encodeURIComponent(filteredConversations[selectedIndex].id)}`,
-            );
+            const chatId = filteredConversations[selectedIndex].id;
+            if (onChatSelect) {
+              onChatSelect(chatId);
+              window.history.replaceState(
+                null,
+                '',
+                `/inbox/${encodeURIComponent(chatId)}`,
+              );
+            } else {
+              router.push(`/inbox/${encodeURIComponent(chatId)}`);
+            }
           }
           break;
         case 'e':
-        case 'a':
           e.preventDefault();
           if (filteredConversations[selectedIndex] && !archivingConversation) {
             handleArchiveConversation(filteredConversations[selectedIndex].id);
           }
+          break;
+        case 'u':
+          e.preventDefault();
+          setFilter('unresponded');
+          break;
+        case 'a':
+          e.preventDefault();
+          setFilter('all');
           break;
       }
     },
@@ -269,9 +339,17 @@ export function InboxContent() {
 
   const handleConversationClick = (index: number) => {
     setSelectedIndex(index);
-    router.push(
-      `/inbox/${encodeURIComponent(filteredConversations[index].id)}`,
-    );
+    const chatId = filteredConversations[index].id;
+    if (onChatSelect) {
+      onChatSelect(chatId);
+      window.history.replaceState(
+        null,
+        '',
+        `/inbox/${encodeURIComponent(chatId)}`,
+      );
+    } else {
+      router.push(`/inbox/${encodeURIComponent(chatId)}`);
+    }
   };
 
   if (isLoading) {
@@ -325,7 +403,7 @@ export function InboxContent() {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Unresponded
+                <Shortcut keys="u" text="unresponded" />
               </button>
               <button
                 type="button"
@@ -336,7 +414,7 @@ export function InboxContent() {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                All
+                <Shortcut keys="a" text="all" />
               </button>
             </div>
           </div>
@@ -368,14 +446,18 @@ export function InboxContent() {
               isSelected={index === selectedIndex}
               onClick={() => handleConversationClick(index)}
               isArchiving={archivingConversation === conversation.id}
+              isSelectedChat={selectedChatId === conversation.id}
             />
           ))
         )}
       </div>
 
       {filteredConversations.length > 0 && (
-        <div className="border-t border-border/40 px-4 py-2 text-xs text-muted-foreground">
-          Use ↑↓ or j/k to navigate, → or Enter to open, e/a to archive
+        <div className="border-t border-border/40 px-4 py-2 text-xs text-muted-foreground gap-1 flex">
+          {/* Use ↑↓ or j/k to navigate, → or Enter to open, e to archive, u/a to filter */}
+          <Shortcut keys="hjkl / ˂↑↓˃" text="navigate" />
+          <Shortcut keys="e" text="archive" />
+          <Shortcut keys="u/a" text="filter" />
         </div>
       )}
     </div>

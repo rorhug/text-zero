@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '../(auth)/auth';
-import { InboxContent } from './inbox-content';
+import { InboxLayout } from './inbox-layout';
 
 export default async function InboxPage() {
   const session = await auth();
@@ -9,5 +9,5 @@ export default async function InboxPage() {
     redirect('/api/auth/guest');
   }
 
-  return <InboxContent />;
+  return <InboxLayout />;
 }

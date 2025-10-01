@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import { LoaderIcon } from '@/components/icons';
-import { VersionBadge } from '@/components/version-badge';
 import type { BeeperDesktop } from '@beeper/desktop-api';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
+import Shortcut from '@/components/shortcut';
 
 type Message = BeeperDesktop.Message;
 
@@ -44,14 +44,23 @@ function MessageBubble({ message }: MessageBubbleProps) {
             {message.senderName}
           </div>
         )}
-        <div className="text-sm">{message.text || '[no text content]'}</div>
+        <div className="text-sm break-words whitespace-pre-wrap">
+          {message.text || '[no text content]'}
+        </div>
+
         <div className={`text-xs mt-1 opacity-70`}>{timestamp}</div>
       </div>
     </div>
   );
 }
 
-export function ConversationView({ chatId }: { chatId: string }) {
+export function ConversationView({
+  chatId,
+  onBack,
+}: {
+  chatId: string;
+  onBack?: () => void;
+}) {
   const { containerRef: messagesContainerRef, scrollToBottom } =
     useScrollToBottom();
   const router = useRouter();
@@ -60,12 +69,23 @@ export function ConversationView({ chatId }: { chatId: string }) {
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const suggestionRef = useRef<string>('');
+  const messageTextRef = useRef<string>('');
 
   const { data, error, isLoading, mutate } = useSWR<MessagesResponse>(
     `/inbox/${chatId}/messages`,
     fetcher,
   );
+
+  // Scroll to bottom immediately when messages load
+  useEffect(() => {
+    if (data?.messages?.length) {
+      scrollToBottom('instant');
+    }
+  }, [data?.messages?.length, scrollToBottom]);
 
   // Load AI suggestion on component mount
   useEffect(() => {
@@ -81,33 +101,47 @@ export function ConversationView({ chatId }: { chatId: string }) {
         const result = await response.json();
         const suggestionText = result.suggestion || '';
         setSuggestion(suggestionText);
-        // Set AI suggestion to input and select all text
-        setMessageText(suggestionText);
+        suggestionRef.current = suggestionText;
       } catch (error) {
         console.error('Failed to load suggestion:', error);
       } finally {
         setIsLoadingSuggestion(false);
-        // scroll to bottom
-        scrollToBottom();
       }
     };
 
     loadSuggestion();
   }, [chatId, data?.messages]);
 
+  // Keep refs in sync
+  useEffect(() => {
+    suggestionRef.current = suggestion;
+  }, [suggestion]);
+
+  useEffect(() => {
+    messageTextRef.current = messageText;
+  }, [messageText]);
+
   // Add keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isInputFocused = document.activeElement === inputRef.current;
+      const target = e.target as HTMLElement;
+      const isAnyInputFocused =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
       // Escape to unfocus input
-      if (e.key === 'Escape' && isInputFocused) {
-        inputRef.current?.blur();
+      if (e.key === 'Escape' && isAnyInputFocused) {
+        (target as HTMLInputElement | HTMLTextAreaElement).blur();
         return;
       }
 
-      // Only handle these keys when input is not focused
-      if (!isInputFocused) {
+      // Don't handle shortcuts when any input/textarea is focused
+      if (isAnyInputFocused) return;
+
+      // Don't handle single-key shortcuts when Cmd is pressed (preserve browser shortcuts)
+      if (e.metaKey || e.ctrlKey) return;
+
+      // Handle keyboard shortcuts when no input is focused
+      if (true) {
         // Focus input with f and select all text
         if (e.key === 'f') {
           e.preventDefault();
@@ -116,13 +150,36 @@ export function ConversationView({ chatId }: { chatId: string }) {
           return;
         }
 
-        // Go back to inbox with left arrow or h
-        if (e.key === 'ArrowLeft' || e.key === 'h') {
-          router.push('/inbox');
+        // Use AI suggestion with g
+        if (e.key === 'g') {
+          e.preventDefault();
+          if (suggestionRef.current) {
+            setMessageText(suggestionRef.current);
+            inputRef.current?.focus();
+          }
+          return;
         }
 
-        // Archive with e or a
-        if (e.key === 'e' || e.key === 'a') {
+        // Go back to inbox with left arrow or h (don't interfere with alt+arrow for word navigation)
+        if (e.key === 'ArrowLeft' && !e.altKey) {
+          if (onBack) {
+            onBack();
+            window.history.replaceState(null, '', '/inbox');
+          } else {
+            router.push('/inbox');
+          }
+        }
+        if (e.key === 'h') {
+          if (onBack) {
+            onBack();
+            window.history.replaceState(null, '', '/inbox');
+          } else {
+            router.push('/inbox');
+          }
+        }
+
+        // Archive with e
+        if (e.key === 'e') {
           handleArchiveConversation();
         }
       }
@@ -153,7 +210,12 @@ export function ConversationView({ chatId }: { chatId: string }) {
         // Refresh messages
         // await mutate();
         // Navigate back to inbox
-        router.push('/inbox');
+        if (onBack) {
+          onBack();
+          window.history.replaceState(null, '', '/inbox');
+        } else {
+          router.push('/inbox');
+        }
       } else {
         console.error('Failed to send message');
       }
@@ -186,7 +248,12 @@ export function ConversationView({ chatId }: { chatId: string }) {
 
       if (response.ok) {
         // Navigate back to inbox after archiving
-        router.push('/inbox');
+        if (onBack) {
+          onBack();
+          window.history.replaceState(null, '', '/inbox');
+        } else {
+          router.push('/inbox');
+        }
       } else {
         console.error('Failed to archive conversation');
       }
@@ -228,18 +295,19 @@ export function ConversationView({ chatId }: { chatId: string }) {
       {/* Header */}
       <div className="border-b border-border/40 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/inbox')}
-            className="text-muted-foreground hover:text-foreground"
-            type="button"
-          >
-            ← Back to Inbox
-          </button>
+          {!onBack && (
+            <button
+              onClick={() => router.push('/inbox')}
+              className="text-muted-foreground hover:text-foreground"
+              type="button"
+            >
+              ← Back to Inbox
+            </button>
+          )}
           <h1 className="text-lg font-semibold">
             Conversation ({messages.length} messages)
           </h1>
         </div>
-        <VersionBadge />
       </div>
 
       {/* Messages */}
@@ -256,32 +324,39 @@ export function ConversationView({ chatId }: { chatId: string }) {
       </div>
 
       {/* AI Suggestion */}
-      {(suggestion || isLoadingSuggestion) && (
-        <div className="border-t border-border/40 p-4 bg-muted/30">
-          <div className="text-sm font-medium mb-2">AI Suggestion:</div>
-          {isLoadingSuggestion ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="animate-spin">
-                <LoaderIcon size={12} />
-              </div>
-              Generating suggestion...
+      <div className="border-t border-border/40 px-4 py-2 bg-muted/30 min-h-20">
+        {/* <div className="text-sm font-medium mb-2">AI Suggestion:</div> */}
+        {isLoadingSuggestion ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="animate-spin">
+              <LoaderIcon size={12} />
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 text-sm p-2 bg-background rounded border">
-                {suggestion}
-              </div>
-              <button
-                onClick={handleUseSuggestion}
-                type="button"
-                className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
-              >
-                Use
-              </button>
+            Generating suggestion...
+          </div>
+        ) : suggestion ? (
+          <div className="flex items-stretch gap-2">
+            <div
+              className={`flex-1 text-sm p-2 bg-background rounded border cursor-pointer ${
+                isSuggestionExpanded ? '' : 'line-clamp-2'
+              }`}
+              onClick={() => setIsSuggestionExpanded(!isSuggestionExpanded)}
+            >
+              {suggestion}
             </div>
-          )}
-        </div>
-      )}
+            <button
+              onClick={handleUseSuggestion}
+              type="button"
+              className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            >
+              <Shortcut keys="g" text="use" />
+            </button>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground h-10">
+            No suggestion available
+          </div>
+        )}
+      </div>
 
       {/* Message Input */}
       <div className="border-t border-border/40 p-4">
@@ -289,9 +364,19 @@ export function ConversationView({ chatId }: { chatId: string }) {
           <textarea
             ref={inputRef}
             value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
+            onChange={(e) => {
+              setMessageText(e.target.value);
+              // Auto-resize textarea
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             placeholder="Type your message..."
-            className="flex-1 min-h-[40px] max-h-32 p-2 border border-border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 min-h-[40px] max-h-[240px] p-2 border border-border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary overflow-y-auto"
+            onFocus={() => {
+              setIsInputFocused(true);
+              scrollToBottom('instant');
+            }}
+            onBlur={() => setIsInputFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -305,12 +390,17 @@ export function ConversationView({ chatId }: { chatId: string }) {
             type="button"
             className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSending ? 'Sending...' : 'Send'}
+            {isSending ? 'Sending...' : <Shortcut keys="⏎" text="send" />}
           </button>
         </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          Press f to focus, Enter to send, Shift+Enter for new line, ←/h to go
-          back, e/a to archive
+        <div className="text-xs text-muted-foreground mt-1 gap-1 flex">
+          <Shortcut keys="f" text="focus" />
+          <Shortcut keys="g" text="use suggestion" />
+          <Shortcut keys="esc" text="unfocus" />
+          <Shortcut keys="⏎" text="send" />
+          <Shortcut keys="⇧+⏎" text="new line" />
+          {/* f to focus, g to use suggestion, Enter to send, Shift+Enter for new line, e/a to
+          archive, ←/h to go back */}
         </div>
       </div>
     </div>

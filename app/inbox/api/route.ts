@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     });
 
     const { searchParams } = request.nextUrl;
-    const limit = Number.parseInt(searchParams.get('limit') || '10');
+    const limit = Number.parseInt(searchParams.get('limit') || '30');
     const includeMuted = searchParams.get('includeMuted') === 'true';
 
     const page = await client.chats.search({

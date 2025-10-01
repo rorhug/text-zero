@@ -10,4 +10,6 @@ export const authConfig = {
     // while this file is also used in non-Node.js environments
   ],
   callbacks: {},
+  secret:
+    process.env.AUTH_SECRET || 'local-development-secret-min-32-chars-long',
 } satisfies NextAuthConfig;

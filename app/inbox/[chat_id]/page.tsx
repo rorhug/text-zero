@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '../../(auth)/auth';
-import { ConversationView } from './conversation-view';
+import { InboxLayout } from '../inbox-layout';
 
 export default async function ConversationPage({
   params,
@@ -13,5 +13,5 @@ export default async function ConversationPage({
     redirect('/api/auth/guest');
   }
 
-  return <ConversationView chatId={(await params).chat_id} />;
+  return <InboxLayout initialChatId={(await params).chat_id} />;
 }
