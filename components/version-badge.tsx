@@ -28,7 +28,7 @@ export function VersionBadge() {
           rel="noopener noreferrer"
           className="text-primary hover:underline"
         >
-          git pull to update {data.remoteCommit}...{data.currentCommit}
+          git pull to update {data.currentCommit}...{data.remoteCommit}
         </a>
       ) : (
         <span className="font-mono">{data.currentCommit}</span>

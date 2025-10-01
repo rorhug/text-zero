@@ -30,7 +30,24 @@ export async function GET() {
       if (response.ok) {
         const data = await response.json();
         remoteCommit = data.sha.substring(0, 7); // Get short hash
-        hasUpdate = currentCommit !== remoteCommit;
+
+        // Check if remote is ahead of current commit
+        // Only show update if remote commit is different AND we're not ahead of remote
+        if (currentCommit !== remoteCommit) {
+          try {
+            const { stdout: mergeBase } = await execAsync(
+              `git merge-base ${currentCommit} ${remoteCommit}`,
+            );
+            const base = mergeBase.trim();
+
+            // If merge-base equals remote commit, we are ahead (or diverged)
+            // Only set hasUpdate to true if merge-base equals current commit (remote is ahead)
+            hasUpdate = base === currentCommit;
+          } catch {
+            // If git merge-base fails (commits unrelated), show update indicator
+            hasUpdate = true;
+          }
+        }
       }
     } catch (error) {
       // If fetch fails, just ignore the update check
