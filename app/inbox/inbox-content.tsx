@@ -25,16 +25,14 @@ interface ConversationsResponse {
 
 function ConversationRow({
   conversation,
-  isSelected,
   onClick,
   isArchiving = false,
-  isSelectedChat = false,
+  isSelected = false,
 }: {
   conversation: ChatWithLastMessage;
-  isSelected: boolean;
   onClick: () => void;
   isArchiving?: boolean;
-  isSelectedChat?: boolean;
+  isSelected?: boolean;
 }) {
   const {
     isUnresponded,
@@ -83,11 +81,9 @@ function ConversationRow({
   return (
     <div
       className={`w-full border-b border-border/40 hover:bg-muted/50 transition-colors cursor-pointer ${
-        isSelectedChat
+        isSelected
           ? 'bg-primary/10 border-l-4 border-l-primary'
-          : isSelected
-            ? 'bg-muted border-l-4 border-l-primary/50'
-            : 'border-l-4 border-l-muted'
+          : 'border-l-4 border-l-muted'
       } ${isArchiving ? 'opacity-50' : ''}`}
       onClick={onClick}
     >
@@ -166,7 +162,6 @@ export function InboxContent({
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<'unresponded' | 'all'>('unresponded');
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [archivingConversation, setArchivingConversation] = useState<
     string | null
   >(null);
@@ -188,15 +183,10 @@ export function InboxContent({
       return true; // 'all' shows everything
     }) || [];
 
-  // Reset selected index when conversations change
-  useEffect(() => {
-    if (
-      filteredConversations.length > 0 &&
-      selectedIndex >= filteredConversations.length
-    ) {
-      setSelectedIndex(0);
-    }
-  }, [filteredConversations.length, selectedIndex]);
+  // Find current selected index based on selectedChatId
+  const currentSelectedIndex = selectedChatId
+    ? filteredConversations.findIndex((conv) => conv.id === selectedChatId)
+    : -1;
 
   const handleArchiveConversation = async (conversationId: string) => {
     setArchivingConversation(conversationId);
@@ -244,57 +234,20 @@ export function InboxContent({
       // Don't handle single-key shortcuts when Cmd is pressed (preserve browser shortcuts)
       if (e.metaKey || e.ctrlKey) return;
 
+      const currentIndex = currentSelectedIndex >= 0 ? currentSelectedIndex : 0;
+
       switch (e.key) {
         case 'ArrowUp':
-          if (!e.altKey) {
-            e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev > 0 ? prev - 1 : filteredConversations.length - 1,
-            );
-          }
-          break;
         case 'k':
+          if (e.key === 'ArrowUp' && e.altKey) break;
           e.preventDefault();
-          setSelectedIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredConversations.length - 1,
-          );
-          break;
-        case 'ArrowDown':
-          if (!e.altKey) {
-            e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev < filteredConversations.length - 1 ? prev + 1 : 0,
-            );
-          }
-          break;
-        case 'j':
-          e.preventDefault();
-          setSelectedIndex((prev) =>
-            prev < filteredConversations.length - 1 ? prev + 1 : 0,
-          );
-          break;
-        case 'ArrowRight':
-          if (!e.altKey) {
-            e.preventDefault();
-            if (filteredConversations[selectedIndex]) {
-              const chatId = filteredConversations[selectedIndex].id;
-              if (onChatSelect) {
-                onChatSelect(chatId);
-                window.history.replaceState(
-                  null,
-                  '',
-                  `/inbox/${encodeURIComponent(chatId)}`,
-                );
-              } else {
-                router.push(`/inbox/${encodeURIComponent(chatId)}`);
-              }
-            }
-          }
-          break;
-        case 'l':
-          e.preventDefault();
-          if (filteredConversations[selectedIndex]) {
-            const chatId = filteredConversations[selectedIndex].id;
+          // biome-ignore lint/correctness/noSwitchDeclarations: <explanation>
+          const prevIndex =
+            currentIndex > 0
+              ? currentIndex - 1
+              : filteredConversations.length - 1;
+          if (filteredConversations[prevIndex]) {
+            const chatId = filteredConversations[prevIndex].id;
             if (onChatSelect) {
               onChatSelect(chatId);
               window.history.replaceState(
@@ -307,10 +260,42 @@ export function InboxContent({
             }
           }
           break;
+        case 'ArrowDown':
+        case 'j':
+          if (e.key === 'ArrowDown' && e.altKey) break;
+          e.preventDefault();
+          // biome-ignore lint/correctness/noSwitchDeclarations: <explanation>
+          const nextIndex =
+            currentIndex < filteredConversations.length - 1
+              ? currentIndex + 1
+              : 0;
+          if (filteredConversations[nextIndex]) {
+            const chatId = filteredConversations[nextIndex].id;
+            if (onChatSelect) {
+              onChatSelect(chatId);
+              window.history.replaceState(
+                null,
+                '',
+                `/inbox/${encodeURIComponent(chatId)}`,
+              );
+            } else {
+              router.push(`/inbox/${encodeURIComponent(chatId)}`);
+            }
+          }
+          break;
+        case 'ArrowRight':
+        case 'l':
+        case 'Enter':
+          // These keys no longer needed since up/down navigate directly
+          break;
         case 'e':
           e.preventDefault();
-          if (filteredConversations[selectedIndex] && !archivingConversation) {
-            handleArchiveConversation(filteredConversations[selectedIndex].id);
+          if (
+            currentIndex >= 0 &&
+            filteredConversations[currentIndex] &&
+            !archivingConversation
+          ) {
+            handleArchiveConversation(filteredConversations[currentIndex].id);
           }
           break;
         case 'u':
@@ -325,7 +310,8 @@ export function InboxContent({
     },
     [
       filteredConversations,
-      selectedIndex,
+      currentSelectedIndex,
+      onChatSelect,
       router,
       archivingConversation,
       handleArchiveConversation,
@@ -337,9 +323,7 @@ export function InboxContent({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const handleConversationClick = (index: number) => {
-    setSelectedIndex(index);
-    const chatId = filteredConversations[index].id;
+  const handleConversationClick = (chatId: string) => {
     if (onChatSelect) {
       onChatSelect(chatId);
       window.history.replaceState(
@@ -439,14 +423,13 @@ export function InboxContent({
             </div>
           </div>
         ) : (
-          filteredConversations.map((conversation, index) => (
+          filteredConversations.map((conversation) => (
             <ConversationRow
               key={conversation.id}
               conversation={conversation}
-              isSelected={index === selectedIndex}
-              onClick={() => handleConversationClick(index)}
+              onClick={() => handleConversationClick(conversation.id)}
               isArchiving={archivingConversation === conversation.id}
-              isSelectedChat={selectedChatId === conversation.id}
+              isSelected={selectedChatId === conversation.id}
             />
           ))
         )}

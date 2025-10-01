@@ -91,6 +91,7 @@ export function ConversationView({
   // Load AI suggestion on component mount
   useEffect(() => {
     const loadSuggestion = async () => {
+      setSuggestion('');
       if (!data?.messages?.length) return;
 
       // Prevent duplicate fetches for the same chat

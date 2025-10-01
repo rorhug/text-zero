@@ -75,7 +75,7 @@ ${conversationHistory}
 Provide a suggested response that:
 1. Responds to the most recent message context
 2. Matches the conversation tone and style
-3. Is natural and conversational
+3. Is natural and conversational. Do not use emdash i.e. —
 4. Only provide the message text, nothing else
 
 Suggested response:`;
@@ -92,7 +92,7 @@ Suggested response:`;
     });
 
     return Response.json({
-      suggestion: result.text.trim(),
+      suggestion: result.text.trim().replaceAll('—', ' - '),
     });
   } catch (error) {
     console.error('Error generating suggestion:', error);
