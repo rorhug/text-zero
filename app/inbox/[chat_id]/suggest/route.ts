@@ -52,6 +52,22 @@ export async function POST(
       }
     } catch {}
 
+    // Get chat information for context
+    let chatTitle = 'Unknown Chat';
+    try {
+      const chatPage = await client.chats.search({
+        limit: 200, // Get all chats to find the one we need
+        inbox: 'primary',
+        type: 'single',
+      });
+      const currentChat = chatPage.items.find(chat => chat.id === chatId);
+      if (currentChat) {
+        chatTitle = currentChat.title || 'Unknown Chat';
+      }
+    } catch (error) {
+      console.log('Could not fetch chat title:', error);
+    }
+
     // Get recent messages for context
     const messagesPage = await client.messages.search({
       chatIDs: [chatId, chatId], // Using the workaround for the array API issue
@@ -94,6 +110,9 @@ export async function POST(
     }
 
     const prompt = `${systemPrompt}
+
+Chat: ${chatTitle}
+Current time: ${now.toLocaleString()}
 
 Based on this conversation history with timestamps, suggest ${suggestionsLimit} natural and appropriate responses. Pay special attention to the timing of messages - more recent messages should heavily influence your response. Consider the conversation flow and respond appropriately to the most recent context.
 
