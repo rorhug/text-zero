@@ -150,6 +150,8 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
     console.log('Full Prompt:', prompt);
     console.log('Model:', 'complete-chat');
     console.log('Suggestions Limit:', suggestionsLimit);
+    console.log('Enable Summary:', enableSummary);
+    console.log('Summary Prompt:', summaryPrompt);
     console.log('=== END OPENAI REQUEST ===');
 
     const result = await generateText({
@@ -165,7 +167,8 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
 
     // Log OpenAI response
     console.log('=== OPENAI RESPONSE ===');
-    console.log('Response:', result.text);
+    console.log('Raw Response:', result.text);
+    console.log('Response Length:', result.text.length);
     console.log('=== END OPENAI RESPONSE ===');
 
     try {
@@ -173,6 +176,12 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
       const jsonResponse = JSON.parse(result.text);
       const suggestions: string[] = [];
       const summary = jsonResponse.summary || '';
+      
+      console.log('=== PARSED JSON RESPONSE ===');
+      console.log('Parsed JSON:', jsonResponse);
+      console.log('Summary:', summary);
+      console.log('Enable Summary:', enableSummary);
+      console.log('=== END PARSED JSON RESPONSE ===');
       
       // Extract suggestions from JSON object
       for (let i = 1; i <= suggestionsLimit; i++) {
@@ -182,11 +191,19 @@ ${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}`
         }
       }
       
+      console.log('=== EXTRACTED SUGGESTIONS ===');
+      console.log('Suggestions:', suggestions);
+      console.log('Final Summary:', enableSummary ? summary : '');
+      console.log('=== END EXTRACTED SUGGESTIONS ===');
+      
       if (suggestions.length > 0) {
         return Response.json({ suggestions, summary: enableSummary ? summary : '' });
       }
     } catch (jsonError) {
+      console.log('=== JSON PARSING ERROR ===');
       console.log('Failed to parse JSON response, falling back to text parsing:', jsonError);
+      console.log('Raw text that failed to parse:', result.text);
+      console.log('=== END JSON PARSING ERROR ===');
     }
 
     // Fallback: if JSON parsing fails, try the old text parsing method
