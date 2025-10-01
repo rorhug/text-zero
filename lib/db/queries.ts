@@ -606,6 +606,7 @@ export async function upsertUserSettings({
   followUpTimeLimit,
   followUpTimeUnit,
   afterMessageAction,
+  archiveAction,
   remindTomorrowMorning,
   remindTomorrowMidday,
   remindTomorrowEvening,
@@ -622,6 +623,7 @@ export async function upsertUserSettings({
   followUpTimeLimit?: number;
   followUpTimeUnit?: string;
   afterMessageAction?: string;
+  archiveAction?: string;
   remindTomorrowMorning?: string;
   remindTomorrowMidday?: string;
   remindTomorrowEvening?: string;
@@ -654,6 +656,7 @@ export async function upsertUserSettings({
           followUpTimeLimit,
           followUpTimeUnit,
           afterMessageAction,
+          archiveAction,
           remindTomorrowMorning,
           remindTomorrowMidday,
           remindTomorrowEvening,
@@ -675,6 +678,7 @@ export async function upsertUserSettings({
         followUpTimeLimit,
         followUpTimeUnit,
         afterMessageAction,
+        archiveAction,
         remindTomorrowMorning,
         remindTomorrowMidday,
         remindTomorrowEvening,

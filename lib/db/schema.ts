@@ -159,6 +159,7 @@ export const userSettings = sqliteTable('UserSettings', {
   followUpTimeLimit: integer('followUpTimeLimit').default(5), // in minutes
   followUpTimeUnit: text('followUpTimeUnit').default('minutes'), // 'minutes', 'hours', 'days'
   afterMessageAction: text('afterMessageAction').default('stay'), // 'stay', 'back_to_inbox', 'next_conversation'
+  archiveAction: text('archiveAction').default('next_conversation'), // action after archiving
   // Reminder settings (only tomorrow times are configurable)
   remindTomorrowMorning: text('remindTomorrowMorning').default('09:00'), // 9 AM
   remindTomorrowMidday: text('remindTomorrowMidday').default('12:00'), // 12 PM

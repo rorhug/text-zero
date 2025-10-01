@@ -40,6 +40,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           followUpTimeLimit: parseInt(formData.get('followUpTimeLimit') as string) || 5,
           followUpTimeUnit: formData.get('followUpTimeUnit') as string || 'minutes',
           afterMessageAction: formData.get('afterMessageAction') as string || 'stay',
+          archiveAction: formData.get('archiveAction') as string || 'next_conversation',
           remindTomorrowMorning: formData.get('remindTomorrowMorning') as string || '09:00',
           remindTomorrowMidday: formData.get('remindTomorrowMidday') as string || '12:00',
           remindTomorrowEvening: formData.get('remindTomorrowEvening') as string || '18:00',
@@ -183,6 +184,22 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           </select>
           <p className="text-xs text-muted-foreground">
             What happens after you send a message
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="block text-sm font-medium">After Archive Action</label>
+          <select
+            name="archiveAction"
+            defaultValue={settings?.archiveAction ?? 'next_conversation'}
+            className="w-48 rounded-md border border-zinc-300 bg-background p-2 text-sm dark:border-zinc-700"
+          >
+            <option value="stay">Stay in conversation</option>
+            <option value="back_to_inbox">Go back to inbox</option>
+            <option value="next_conversation">Go to next conversation</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            What happens after you archive a conversation
           </p>
         </div>
         
