@@ -21,6 +21,54 @@ export function ProfileForm({ settings }: ProfileFormProps) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const handleResetSettings = async () => {
+    if (!confirm('Are you sure you want to reset all settings to default values? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          suggestionPrompt: null,
+          followUpPrompt: null,
+          summaryPrompt: null,
+          messageLimit: 30,
+          suggestionsLimit: 3,
+          conversationsLimit: 10,
+          followUpTimeLimit: 5,
+          followUpTimeUnit: 'minutes',
+          afterMessageAction: 'stay',
+          archiveAction: 'next_conversation',
+          remindTomorrowMorning: '09:00',
+          remindTomorrowMidday: '12:00',
+          remindTomorrowEvening: '18:00',
+          dismissOnIncomingMessage: 1,
+          enableSummary: 0,
+        }),
+      });
+
+      if (response.ok) {
+        showToast('✅ Settings reset to defaults', 'success');
+        // Reload the page to show the reset values
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        showToast('❌ Failed to reset settings', 'error');
+      }
+    } catch (error) {
+      showToast('❌ Error resetting settings', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
     
@@ -280,6 +328,14 @@ export function ProfileForm({ settings }: ProfileFormProps) {
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : 'Save Settings'}
+          </button>
+          <button
+            type="button"
+            onClick={handleResetSettings}
+            disabled={isLoading}
+            className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Resetting...' : 'Reset Settings'}
           </button>
           <button
             type="button"
