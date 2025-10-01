@@ -459,6 +459,49 @@ export function ConversationView({ chatId }: { chatId: string }) {
     }
   };
 
+  const handleArchive = async () => {
+    try {
+      console.log('Attempting to archive conversation for chat:', chatId);
+
+      // Fetch conversations to resolve correct chat identifier
+      const chatResponse = await fetch('/inbox/api');
+      const chatData = await chatResponse.json();
+
+      // Try multiple matching strategies
+      const chatById = chatData.conversations?.find((chat: any) => chat.id === chatId);
+      const chatByLocalId = chatData.conversations?.find((chat: any) => chat.localChatID === chatId);
+      const chatByUrlEncoded = chatData.conversations?.find((chat: any) => chat.id === decodeURIComponent(chatId));
+
+      const foundChat = chatById || chatByLocalId || chatByUrlEncoded;
+      if (!foundChat) {
+        console.error('Chat not found in conversations list for archive');
+        return;
+      }
+
+      // Prefer Matrix room id for archive; fallback to localChatID
+      const chatIDToArchive = foundChat?.id || foundChat?.localChatID;
+      console.log('Archiving chat with ID:', chatIDToArchive);
+
+      const response = await fetch('/inbox/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: chatIDToArchive, archived: true }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Archive success:', result);
+        // Navigate back to inbox preserving filters
+        router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${platform}`);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to archive conversation. Status:', response.status, 'Error:', errorText);
+      }
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -780,6 +823,27 @@ export function ConversationView({ chatId }: { chatId: string }) {
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
               <polyline points="10,17 15,12 10,7" />
               <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+          </button>
+          <button
+            onClick={handleArchive}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+            type="button"
+            title="Archive this conversation"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="4" rx="1" />
+              <path d="M5 7v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7" />
+              <line x1="10" y1="12" x2="14" y2="12" />
             </svg>
           </button>
           <VersionBadge />
