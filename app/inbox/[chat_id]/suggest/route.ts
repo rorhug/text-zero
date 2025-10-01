@@ -130,12 +130,13 @@ Provide exactly ${suggestionsLimit} alternative suggested responses that:
 
 IMPORTANT: You must respond with a valid JSON object in this exact format:
 {
+  "summary": "Brief summary of the conversation context and current situation",
   "suggestion1": "Your first suggestion here",
   "suggestion2": "Your second suggestion here",
   "suggestion3": "Your third suggestion here"
 }
 
-Do not include any other text, explanations, or formatting outside the JSON object.`;
+The summary should be 1-2 sentences describing the conversation context and current situation. Do not include any other text, explanations, or formatting outside the JSON object.`;
 
     // Log what we're sending to OpenAI
     console.log('=== OPENAI REQUEST ===');
@@ -165,6 +166,7 @@ Do not include any other text, explanations, or formatting outside the JSON obje
       // Try to parse JSON response
       const jsonResponse = JSON.parse(result.text);
       const suggestions: string[] = [];
+      const summary = jsonResponse.summary || '';
       
       // Extract suggestions from JSON object
       for (let i = 1; i <= suggestionsLimit; i++) {
@@ -175,7 +177,7 @@ Do not include any other text, explanations, or formatting outside the JSON obje
       }
       
       if (suggestions.length > 0) {
-        return Response.json({ suggestions });
+        return Response.json({ suggestions, summary });
       }
     } catch (jsonError) {
       console.log('Failed to parse JSON response, falling back to text parsing:', jsonError);
@@ -196,10 +198,10 @@ Do not include any other text, explanations, or formatting outside the JSON obje
         .map((l) => l.trim())
         .filter((l) => l.length > 0)
         .slice(0, suggestionsLimit);
-      return Response.json({ suggestions: fallback });
+      return Response.json({ suggestions: fallback, summary: '' });
     }
 
-    return Response.json({ suggestions });
+    return Response.json({ suggestions, summary: '' });
   } catch (error) {
     console.error('Error generating suggestion:', error);
     return new ChatSDKError(

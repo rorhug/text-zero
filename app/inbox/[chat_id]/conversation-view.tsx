@@ -63,6 +63,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
   const platform = searchParams.get('platform') || 'all';
   const [messageText, setMessageText] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [summary, setSummary] = useState<string>('');
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [afterMessageAction, setAfterMessageAction] = useState('stay');
@@ -118,6 +119,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
         const result = await response.json();
         const list: string[] = result.suggestions || (result.suggestion ? [result.suggestion] : []);
         setSuggestions(list);
+        setSummary(result.summary || '');
         if (list.length > 0) {
           setMessageText(list[0]);
           if (inputRef.current) {
@@ -202,6 +204,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
       if (response.ok) {
         setMessageText('');
         setSuggestions([]);
+        setSummary('');
         
         // Handle after message action
         if (afterMessageAction === 'back_to_inbox') {
@@ -799,6 +802,12 @@ export function ConversationView({ chatId }: { chatId: string }) {
       {/* AI Suggestions */}
       {(suggestions.length > 0 || isLoadingSuggestion) && (
         <div className="border-t border-border/40 p-4 bg-muted/30">
+          {summary && (
+            <div className="mb-3">
+              <div className="text-sm font-medium mb-1">Summary</div>
+              <div className="text-sm text-muted-foreground">{summary}</div>
+            </div>
+          )}
           <div className="text-sm font-medium mb-2">{suggestionType}</div>
           {isLoadingSuggestion ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
