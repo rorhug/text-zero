@@ -36,6 +36,7 @@ export async function PUT(request: Request) {
       followUpTimeLimit: body.followUpTimeLimit,
       followUpTimeUnit: body.followUpTimeUnit,
       afterMessageAction: body.afterMessageAction,
+      archiveAction: body.archiveAction,
       remindTomorrowMorning: body.remindTomorrowMorning,
       remindTomorrowMidday: body.remindTomorrowMidday,
       remindTomorrowEvening: body.remindTomorrowEvening,

@@ -67,6 +67,7 @@ export function ConversationView({ chatId }: { chatId: string }) {
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [afterMessageAction, setAfterMessageAction] = useState('stay');
+  const [archiveAction, setArchiveAction] = useState('next_conversation');
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isSettingReminder, setIsSettingReminder] = useState(false);
   const [reminderSettings, setReminderSettings] = useState<any>(null);
@@ -140,8 +141,9 @@ export function ConversationView({ chatId }: { chatId: string }) {
       try {
         const response = await fetch(`/inbox/${chatId}/after-message-action`);
         if (response.ok) {
-          const { afterMessageAction } = await response.json();
+          const { afterMessageAction, archiveAction } = await response.json();
           setAfterMessageAction(afterMessageAction);
+          if (archiveAction) setArchiveAction(archiveAction);
         }
       } catch (error) {
         console.error('Error loading after message action:', error);
@@ -491,8 +493,16 @@ export function ConversationView({ chatId }: { chatId: string }) {
       if (response.ok) {
         const result = await response.json();
         console.log('Archive success:', result);
-        // Navigate back to inbox preserving filters
-        router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${platform}`);
+        // Navigate based on archiveAction
+        if (archiveAction === 'stay') {
+          // do nothing
+        } else if (archiveAction === 'back_to_inbox') {
+          router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${platform}`);
+        } else if (archiveAction === 'next_conversation') {
+          await handleNextConversation();
+        } else {
+          router.push(`/inbox?filter=${filter}&sortBy=${sortBy}&platform=${platform}`);
+        }
       } else {
         const errorText = await response.text();
         console.error('Failed to archive conversation. Status:', response.status, 'Error:', errorText);

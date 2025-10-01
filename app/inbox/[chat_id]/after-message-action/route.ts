@@ -14,8 +14,9 @@ export async function GET(
 
     const settings = await getUserSettings({ userId: session.user.id });
     const afterMessageAction = settings?.afterMessageAction || 'stay';
+    const archiveAction = (settings as any)?.archiveAction || 'next_conversation';
 
-    return NextResponse.json({ afterMessageAction });
+    return NextResponse.json({ afterMessageAction, archiveAction });
   } catch (error) {
     console.error('Error getting after message action:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
