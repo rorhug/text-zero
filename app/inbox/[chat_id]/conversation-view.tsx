@@ -108,6 +108,21 @@ export function ConversationView({ chatId }: { chatId: string }) {
     },
   );
 
+  // Get chat info for title
+  const { data: chatInfo } = useSWR(
+    `/inbox/api`,
+    fetcher,
+    {
+      onSuccess: (data) => {
+        console.log('=== CHAT INFO LOADED ===');
+        console.log('Looking for chat:', chatId);
+        const foundChat = data?.conversations?.find((chat: any) => chat.id === chatId);
+        console.log('Found chat info:', foundChat);
+        console.log('=== END CHAT INFO ===');
+      }
+    }
+  );
+
   // Load AI suggestion on component mount
   useEffect(() => {
     const loadSuggestion = async () => {
@@ -555,7 +570,11 @@ export function ConversationView({ chatId }: { chatId: string }) {
             ← Back to Inbox
           </button>
           <h1 className="text-lg font-semibold">
-            Conversation ({messages.length} messages)
+            {(() => {
+              const foundChat = chatInfo?.conversations?.find((chat: any) => chat.id === chatId);
+              const chatTitle = foundChat?.title || 'Conversation';
+              return `${chatTitle} (${messages.length} messages)`;
+            })()}
           </h1>
         </div>
         <div className="flex items-center gap-2">
