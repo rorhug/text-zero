@@ -152,6 +152,7 @@ export const userSettings = sqliteTable('UserSettings', {
   userId: text('userId').primaryKey().notNull().references(() => user.id),
   suggestionPrompt: text('suggestionPrompt'),
   followUpPrompt: text('followUpPrompt'),
+  summaryPrompt: text('summaryPrompt'),
   messageLimit: integer('messageLimit').default(30),
   suggestionsLimit: integer('suggestionsLimit').default(3),
   conversationsLimit: integer('conversationsLimit').default(10),
@@ -163,6 +164,7 @@ export const userSettings = sqliteTable('UserSettings', {
   remindTomorrowMidday: text('remindTomorrowMidday').default('12:00'), // 12 PM
   remindTomorrowEvening: text('remindTomorrowEvening').default('18:00'), // 6 PM
   dismissOnIncomingMessage: integer('dismissOnIncomingMessage').default(1), // 1 = true, 0 = false
+  enableSummary: integer('enableSummary').default(0), // 1 = true, 0 = false
 });
 
 export type UserSettings = InferSelectModel<typeof userSettings>;

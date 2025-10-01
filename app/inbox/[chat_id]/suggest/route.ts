@@ -100,13 +100,19 @@ export async function POST(
       })
       .join('\n');
 
-    // Always use the custom suggestion prompt if available, regardless of who sent the last message
+    // Get user settings for prompts and summary
     let systemPrompt = '';
+    let summaryPrompt = '';
+    let enableSummary = false;
     try {
       const settings = await getUserSettings({ userId: session.user.id });
       systemPrompt = settings?.suggestionPrompt || 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
+      summaryPrompt = settings?.summaryPrompt || 'Provide a brief 1-2 sentence summary of the conversation context and current situation. Focus on the key points and what needs to be addressed next.';
+      enableSummary = settings?.enableSummary === 1;
     } catch {
       systemPrompt = 'You are a smart messaging assistant that helps with optimal communication timing and content. Consider the conversation context, timing of messages, and suggest the best responses. Pay attention to:\n\n1. Message timing - when is the optimal time to respond (immediate, wait a bit, or delay)\n2. Content quality - natural, engaging responses that match the conversation tone\n3. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words. Consider if a quick response, delayed response, or follow-up later would be most effective. Max 5 suggestions.';
+      summaryPrompt = 'Provide a brief 1-2 sentence summary of the conversation context and current situation. Focus on the key points and what needs to be addressed next.';
+      enableSummary = false;
     }
 
     const prompt = `${systemPrompt}
@@ -130,13 +136,13 @@ Provide exactly ${suggestionsLimit} alternative suggested responses that:
 
 IMPORTANT: You must respond with a valid JSON object in this exact format:
 {
-  "summary": "Brief summary of the conversation context and current situation",
+  "summary": "${enableSummary ? summaryPrompt : 'No summary needed'}",
   "suggestion1": "Your first suggestion here",
   "suggestion2": "Your second suggestion here",
   "suggestion3": "Your third suggestion here"
 }
 
-The summary should be 1-2 sentences describing the conversation context and current situation. Do not include any other text, explanations, or formatting outside the JSON object.`;
+${enableSummary ? `The summary should follow this instruction: ${summaryPrompt}` : 'Set summary to empty string if summary is disabled.'} Do not include any other text, explanations, or formatting outside the JSON object.`;
 
     // Log what we're sending to OpenAI
     console.log('=== OPENAI REQUEST ===');
@@ -177,7 +183,7 @@ The summary should be 1-2 sentences describing the conversation context and curr
       }
       
       if (suggestions.length > 0) {
-        return Response.json({ suggestions, summary });
+        return Response.json({ suggestions, summary: enableSummary ? summary : '' });
       }
     } catch (jsonError) {
       console.log('Failed to parse JSON response, falling back to text parsing:', jsonError);
@@ -198,10 +204,10 @@ The summary should be 1-2 sentences describing the conversation context and curr
         .map((l) => l.trim())
         .filter((l) => l.length > 0)
         .slice(0, suggestionsLimit);
-      return Response.json({ suggestions: fallback, summary: '' });
+      return Response.json({ suggestions: fallback, summary: enableSummary ? '' : '' });
     }
 
-    return Response.json({ suggestions, summary: '' });
+    return Response.json({ suggestions, summary: enableSummary ? '' : '' });
   } catch (error) {
     console.error('Error generating suggestion:', error);
     return new ChatSDKError(

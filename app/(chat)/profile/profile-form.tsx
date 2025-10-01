@@ -33,6 +33,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
         body: JSON.stringify({
           suggestionPrompt: formData.get('suggestionPrompt') as string || null,
           followUpPrompt: formData.get('followUpPrompt') as string || null,
+          summaryPrompt: formData.get('summaryPrompt') as string || null,
           messageLimit: parseInt(formData.get('messageLimit') as string) || 30,
           suggestionsLimit: Math.min(5, Math.max(1, parseInt(formData.get('suggestionsLimit') as string) || 3)),
           conversationsLimit: Math.min(200, Math.max(5, parseInt(formData.get('conversationsLimit') as string) || 10)),
@@ -43,6 +44,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           remindTomorrowMidday: formData.get('remindTomorrowMidday') as string || '12:00',
           remindTomorrowEvening: formData.get('remindTomorrowEvening') as string || '18:00',
           dismissOnIncomingMessage: formData.get('dismissOnIncomingMessage') === 'on' ? 1 : 0,
+          enableSummary: formData.get('enableSummary') === 'on' ? 1 : 0,
         }),
       });
 
@@ -94,6 +96,19 @@ export function ProfileForm({ settings }: ProfileFormProps) {
           />
           <p className="text-xs text-muted-foreground">
             Used when you sent the last message (waiting for response)
+          </p>
+        </div>
+        
+        <div className="space-y-3">
+          <label className="block text-sm font-medium">Summary Prompt</label>
+          <textarea
+            name="summaryPrompt"
+            defaultValue={settings?.summaryPrompt ?? 'Provide a brief 1-2 sentence summary of the conversation context and current situation. Focus on the key points and what needs to be addressed next.'}
+            placeholder="Provide a brief summary..."
+            className="w-full min-h-32 rounded-md border border-zinc-300 bg-background p-3 text-sm dark:border-zinc-700"
+          />
+          <p className="text-xs text-muted-foreground">
+            Used to generate conversation summaries above suggestions
           </p>
         </div>
         
@@ -222,6 +237,21 @@ export function ProfileForm({ settings }: ProfileFormProps) {
             </label>
             <p className="text-xs text-muted-foreground">
               When enabled, reminders are automatically cancelled if someone replies to the conversation
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="enableSummary"
+                defaultChecked={settings?.enableSummary === 1}
+                className="rounded border border-zinc-300 bg-background dark:border-zinc-700"
+              />
+              <span className="text-sm font-medium">Enable conversation summary</span>
+            </label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, a summary of the conversation will be displayed above AI suggestions
             </p>
           </div>
         </div>
