@@ -44,7 +44,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching messages:', error);
     return new ChatSDKError(
-      'server_error:api',
+      'offline:beeper',
       'Failed to fetch messages from Beeper',
     ).toResponse();
   }

@@ -16,7 +16,8 @@ export type Surface =
   | 'history'
   | 'vote'
   | 'document'
-  | 'suggestions';
+  | 'suggestions'
+  | 'beeper';
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
@@ -32,6 +33,7 @@ export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   vote: 'response',
   document: 'response',
   suggestions: 'response',
+  beeper: 'response',
 };
 
 export class ChatSDKError extends Error {
@@ -107,6 +109,8 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
       return 'You need to sign in to view this document. Please sign in and try again.';
     case 'bad_request:document':
       return 'The request to create or update the document was invalid. Please check your input and try again.';
+    case 'offline:beeper':
+      return 'Cannot connect to Beeper. Make sure Beeper is open and the API is on in settings.';
 
     default:
       return 'Something went wrong. Please try again later.';
