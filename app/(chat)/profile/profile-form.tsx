@@ -13,7 +13,7 @@ export function ProfileForm({ settings }: ProfileFormProps) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const router = useRouter();
 
-  const defaultPrompt = 'You are a smart messaging assistant that helps with optimal communication content. Consider the conversation context and suggest the best responses. Pay attention to:\n\n1. Content quality - natural, engaging responses that match the conversation tone\n2. Context awareness - understand the conversation flow and respond appropriately\n\nAlways suggest full sentences, not just words.';
+  const defaultPrompt = 'You are a smart messaging assistant that helps with optimal communication content. Consider the conversation context and suggest the best responses. Pay attention to:\n\n1. Content quality - natural, engaging responses that match the conversation tone\n2. Context awareness - understand the conversation flow and respond appropriately';
   const defaultFollowUpPrompt = 'You are a helpful assistant. The user has just sent a message and is waiting for a response. Suggest appropriate follow-up messages that could continue the conversation naturally. Consider the context and tone of the conversation.';
 
   const showToast = (message: string, type: 'success' | 'error') => {
