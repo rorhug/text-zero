@@ -205,12 +205,14 @@ export function InboxContent({
       if (response.ok) {
         // Refresh the conversation list
         await mutate();
-        // Adjust selected index if needed
+        // select next conversation
         if (
-          selectedIndex >= filteredConversations.length - 1 &&
-          selectedIndex > 0
+          onChatSelect &&
+          currentSelectedIndex < filteredConversations.length - 1
         ) {
-          setSelectedIndex(selectedIndex - 1);
+          const nextConversation =
+            filteredConversations[currentSelectedIndex + 1];
+          onChatSelect(nextConversation.id);
         }
       } else {
         console.error('Failed to archive conversation');
