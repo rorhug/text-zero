@@ -788,6 +788,27 @@ export function ConversationView({ chatId }: { chatId: string }) {
             <span className="text-muted-foreground">Auto-dismiss</span>
           </label>
           <button
+            onClick={handleArchive}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+            type="button"
+            title="Archive this conversation"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="4" rx="1" />
+              <path d="M5 7v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7" />
+              <line x1="10" y1="12" x2="14" y2="12" />
+            </svg>
+          </button>
+          <button
             onClick={handleNextConversation}
             disabled={isLoadingNext}
             className="flex items-center gap-2 px-3 py-1.5 text-sm bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-md transition-colors disabled:opacity-50"
@@ -833,27 +854,6 @@ export function ConversationView({ chatId }: { chatId: string }) {
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
               <polyline points="10,17 15,12 10,7" />
               <line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-          </button>
-          <button
-            onClick={handleArchive}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
-            type="button"
-            title="Archive this conversation"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="4" rx="1" />
-              <path d="M5 7v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7" />
-              <line x1="10" y1="12" x2="14" y2="12" />
             </svg>
           </button>
           <VersionBadge />
