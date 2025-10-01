@@ -503,17 +503,6 @@ export function ConversationView({ chatId }: { chatId: string }) {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1 text-xs" title="✅ Checked: Reminders are automatically cancelled when someone replies to this conversation. ❌ Unchecked: Reminders stay active even after receiving new messages.">
-              <input
-                type="checkbox"
-                checked={dismissOnIncomingMessage}
-                onChange={(e) => handleDismissOnIncomingChange(e.target.checked)}
-                className="rounded border border-zinc-300 bg-background dark:border-zinc-700"
-              />
-              <span className="text-muted-foreground">Auto-dismiss</span>
-            </label>
-          </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-muted-foreground">Remind me later in:</span>
             <button
@@ -733,6 +722,15 @@ export function ConversationView({ chatId }: { chatId: string }) {
               </div>
             </div>
           </div>
+          <label className="flex items-center gap-1 text-xs" title="✅ Checked: Reminders are automatically cancelled when someone replies to this conversation. ❌ Unchecked: Reminders stay active even after receiving new messages.">
+            <input
+              type="checkbox"
+              checked={dismissOnIncomingMessage}
+              onChange={(e) => handleDismissOnIncomingChange(e.target.checked)}
+              className="rounded border border-zinc-300 bg-background dark:border-zinc-700"
+            />
+            <span className="text-muted-foreground">Auto-dismiss</span>
+          </label>
           <button
             onClick={handleNextConversation}
             disabled={isLoadingNext}
