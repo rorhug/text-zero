@@ -599,6 +599,7 @@ export async function upsertUserSettings({
   userId,
   suggestionPrompt,
   followUpPrompt,
+  summaryPrompt,
   messageLimit,
   suggestionsLimit,
   conversationsLimit,
@@ -609,10 +610,12 @@ export async function upsertUserSettings({
   remindTomorrowMidday,
   remindTomorrowEvening,
   dismissOnIncomingMessage,
+  enableSummary,
 }: {
   userId: string;
   suggestionPrompt: string | null;
   followUpPrompt: string | null;
+  summaryPrompt: string | null;
   messageLimit?: number;
   suggestionsLimit?: number;
   conversationsLimit?: number;
@@ -623,6 +626,7 @@ export async function upsertUserSettings({
   remindTomorrowMidday?: string;
   remindTomorrowEvening?: string;
   dismissOnIncomingMessage?: number;
+  enableSummary?: number;
 }) {
   try {
     // First check if user exists, if not create a guest user
@@ -643,6 +647,7 @@ export async function upsertUserSettings({
         .set({ 
           suggestionPrompt, 
           followUpPrompt, 
+          summaryPrompt,
           messageLimit, 
           suggestionsLimit, 
           conversationsLimit,
@@ -652,7 +657,8 @@ export async function upsertUserSettings({
           remindTomorrowMorning,
           remindTomorrowMidday,
           remindTomorrowEvening,
-          dismissOnIncomingMessage
+          dismissOnIncomingMessage,
+          enableSummary
         })
         .where(eq(userSettings.userId, userId));
     }
@@ -662,6 +668,7 @@ export async function upsertUserSettings({
         userId, 
         suggestionPrompt, 
         followUpPrompt, 
+        summaryPrompt,
         messageLimit, 
         suggestionsLimit, 
         conversationsLimit,
@@ -671,7 +678,8 @@ export async function upsertUserSettings({
         remindTomorrowMorning,
         remindTomorrowMidday,
         remindTomorrowEvening,
-        dismissOnIncomingMessage
+        dismissOnIncomingMessage,
+        enableSummary
       });
   } catch (error) {
     console.error('upsertUserSettings failed', { userId, suggestionPrompt, error });
