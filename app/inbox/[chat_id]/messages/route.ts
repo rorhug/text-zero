@@ -36,8 +36,11 @@ export async function GET(
       limit,
     });
 
+    // Reverse messages to show oldest first (Beeper API returns newest first)
+    const sortedMessages = [...messagesPage.items].reverse();
+
     return Response.json({
-      messages: messagesPage.items, // Reverse to show oldest first
+      messages: sortedMessages,
       hasMore: messagesPage.hasMore || false,
       chatId,
     });
