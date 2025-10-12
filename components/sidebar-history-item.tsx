@@ -25,6 +25,7 @@ import {
 } from './icons';
 import { memo } from 'react';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 const PureChatItem = ({
   chat,
@@ -46,6 +47,11 @@ const PureChatItem = ({
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive}>
         <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
+          <Avatar className="size-6">
+            <AvatarFallback className="text-xs">
+              {chat.title.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <span>{chat.title}</span>
         </Link>
       </SidebarMenuButton>

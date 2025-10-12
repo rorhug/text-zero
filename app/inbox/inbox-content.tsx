@@ -147,19 +147,11 @@ function ConversationRow({
           </div>
         )}
         <div className="flex-shrink-0">
-          {otherParticipant?.imgURL ? (
-            <img
-              src={otherParticipant.imgURL}
-              alt={displayName}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-lg font-medium text-muted-foreground">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <span className="text-lg font-medium text-muted-foreground">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 min-w-0">
