@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { addMissingEnvVars } from '@/lib/env';
-import path from 'path';
+import path from 'node:path';
 
 export async function POST(request: NextRequest) {
   try {

@@ -3,7 +3,6 @@ import {
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from 'ai';
-import { gateway } from '@ai-sdk/gateway';
 import { isTestEnvironment } from '../constants';
 import { createOpenAI } from '@ai-sdk/openai';
 

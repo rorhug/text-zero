@@ -8,6 +8,7 @@ import { LoaderIcon } from '@/components/icons';
 import { VersionBadge } from '@/components/version-badge';
 import type { BeeperDesktop } from '@beeper/desktop-api';
 import Shortcut from '@/components/shortcut';
+import type { BeeperChat } from '@/lib/db/schema';
 
 type Chat = BeeperDesktop.Chats.Chat;
 type Message = BeeperDesktop.Message;
@@ -16,6 +17,7 @@ interface ChatWithLastMessage extends Chat {
   lastMessage: Message | null;
   isUnresponded: boolean;
   isUnread: boolean;
+  crmData: BeeperChat | null;
 }
 
 interface ConversationsResponse {
@@ -170,9 +172,53 @@ export function InboxContent({
     '/inbox/api',
     fetcher,
     {
+      // refetch on focus
+      revalidateOnFocus: true,
+      focusThrottleInterval: 500,
+
       refreshInterval: 30000, // Refresh every 30 seconds
     },
   );
+
+  // Enrich contacts sequentially when data changes
+  useEffect(() => {
+    const enrichContacts = async () => {
+      if (!data?.conversations) return;
+
+      for (const conv of data.conversations) {
+        // Check if enrichment is needed
+        const crmLastMessageTime = conv.crmData?.lastMessage?.timestamp
+          ? new Date(conv.crmData.lastMessage.timestamp).getTime()
+          : 0;
+        const currentLastMessageTime = conv.lastMessage?.timestamp
+          ? new Date(conv.lastMessage.timestamp).getTime()
+          : 0;
+
+        const beeperChatUpdatedAt = conv.crmData?.updatedAt
+          ? new Date(conv.crmData.updatedAt).getTime()
+          : 0;
+
+        // Enrich if last message is newer than CRM data and updatedAt
+        if (
+          currentLastMessageTime > crmLastMessageTime &&
+          currentLastMessageTime > beeperChatUpdatedAt
+        ) {
+          try {
+            await fetch(
+              `/crm/api/enrich-contact/${encodeURIComponent(conv.id)}`,
+              {
+                method: 'POST',
+              },
+            );
+          } catch (error) {
+            console.error(`Failed to enrich contact ${conv.id}:`, error);
+          }
+        }
+      }
+    };
+
+    enrichContacts();
+  }, []);
 
   // Filter conversations based on the current filter
   const filteredConversations =
@@ -227,7 +273,7 @@ export function InboxContent({
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (filteredConversations.length === 0) return;
+      // if (filteredConversations.length === 0) return;
 
       // Don't handle shortcuts when any input/textarea is focused
       const target = e.target as HTMLElement;
@@ -284,11 +330,6 @@ export function InboxContent({
               router.push(`/inbox/${encodeURIComponent(chatId)}`);
             }
           }
-          break;
-        case 'ArrowRight':
-        case 'l':
-        case 'Enter':
-          // These keys no longer needed since up/down navigate directly
           break;
         case 'e':
           e.preventDefault();

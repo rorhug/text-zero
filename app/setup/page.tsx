@@ -1,9 +1,10 @@
-import { redirect } from 'next/navigation';
 import { SetupForm } from '@/components/setup-form';
+import { getAllFeatures } from '@/lib/features';
 
 export default async function SetupPage() {
   const beeperToken = process.env.BEEPER_MCP_TOKEN;
   const openaiKey = process.env.OPENAI_API_KEY;
+  const features = await getAllFeatures();
 
   // If both tokens are already set, redirect to inbox
   // if (beeperToken && openaiKey) {
@@ -24,6 +25,7 @@ export default async function SetupPage() {
           hasOpenaiKey={!!openaiKey}
           defaultBeeperToken={beeperToken}
           defaultOpenaiKey={openaiKey}
+          initialFeatures={features}
         />
       </div>
     </div>

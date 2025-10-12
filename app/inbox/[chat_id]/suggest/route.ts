@@ -2,7 +2,6 @@ import { auth } from '@/app/(auth)/auth';
 import { ChatSDKError } from '@/lib/errors';
 import BeeperDesktop from '@beeper/desktop-api';
 import { generateText } from 'ai';
-import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import type { NextRequest } from 'next/server';
 import { myProvider } from '@/lib/ai/providers';
 

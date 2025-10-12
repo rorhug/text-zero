@@ -14,8 +14,8 @@ import {
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { join } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
 
 import {
   user,
@@ -49,7 +49,7 @@ if (!existsSync(dataDir)) {
 
 const dbPath = process.env.DATABASE_URL || join(dataDir, 'sqlite.db');
 const sqlite = new Database(dbPath);
-const db = drizzle(sqlite);
+export const db = drizzle(sqlite);
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {

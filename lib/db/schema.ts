@@ -147,3 +147,38 @@ export const stream = sqliteTable('Stream', {
 });
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const beeperChat = sqliteTable('BeeperChat', {
+  chatId: text('chatId').primaryKey().notNull(), // Beeper chat ID as primary key
+  name: text('name').notNull(),
+  summary: text('summary'), // Conversation summary
+  interests: text('interests', { mode: 'json' }).$type<string[]>(), // Array of interest tags
+  notes: text('notes'), // Important context about the relationship
+  lastMessage: text('lastMessage', { mode: 'json' }).$type<{
+    id: string;
+    timestamp: string;
+    text: string;
+    isSender: boolean;
+  } | null>(), // Last message metadata from API
+  updatedAt: integer('updatedAt', { mode: 'timestamp' })
+    .notNull()
+    .$onUpdate(() => new Date()),
+  createdAt: integer('createdAt', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type BeeperChat = InferSelectModel<typeof beeperChat>;
+
+export const featureFlag = sqliteTable('FeatureFlag', {
+  key: text('key').primaryKey().notNull(), // Feature key (e.g., 'crm')
+  enabled: integer('enabled', { mode: 'boolean' }).notNull(), // Feature enabled state
+  updatedAt: integer('updatedAt', { mode: 'timestamp' })
+    .notNull()
+    .$onUpdate(() => new Date()),
+  createdAt: integer('createdAt', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type FeatureFlag = InferSelectModel<typeof featureFlag>;

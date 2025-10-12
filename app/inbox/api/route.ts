@@ -3,6 +3,9 @@ import { ChatSDKError } from '@/lib/errors';
 import BeeperDesktop from '@beeper/desktop-api';
 import type { NextRequest } from 'next/server';
 import pMap from 'p-map';
+import { db } from '@/lib/db/queries';
+import { beeperChat } from '@/lib/db/schema';
+import { inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
     const page = await client.chats.search({
       includeMuted,
       limit,
-      inbox: 'primary',
+      inbox: 'archive',
       type: 'single',
     });
 
@@ -67,8 +70,24 @@ export async function GET(request: NextRequest) {
       { concurrency: 10 },
     );
 
+    // Fetch BeeperChat data for all conversations
+    // const chatIds = page.items.map((chat) => chat.id);
+    // const beeperChats = await db
+    //   .select()
+    //   .from(beeperChat)
+    //   .where(inArray(beeperChat.chatId, chatIds));
+
+    // // Create a map for quick lookup
+    // const beeperChatMap = new Map(beeperChats.map((bc) => [bc.chatId, bc]));
+
+    // // Merge BeeperChat data into conversations
+    // const conversationsWithCRM = conversationsWithLastMessage.map((conv) => ({
+    //   ...conv,
+    //   crmData: beeperChatMap.get(conv.id) || null,
+    // }));
+
     return Response.json({
-      conversations: conversationsWithLastMessage,
+      conversations: conversationsWithLastMessage, //conversationsWithCRM,
       hasMore: page.hasMore || false,
     });
   } catch (error) {

@@ -37,7 +37,7 @@ export async function GET(
     });
 
     return Response.json({
-      messages: messagesPage.items, // Reverse to show oldest first
+      messages: messagesPage.items.reverse(), // Reverse to show oldest first
       hasMore: messagesPage.hasMore || false,
       chatId,
     });

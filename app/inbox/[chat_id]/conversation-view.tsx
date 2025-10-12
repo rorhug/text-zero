@@ -68,7 +68,6 @@ export function ConversationView({
   const [suggestion, setSuggestion] = useState('');
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -147,60 +146,53 @@ export function ConversationView({
       if (e.metaKey || e.ctrlKey) return;
 
       // Handle keyboard shortcuts when no input is focused
-      if (true) {
-        // Focus input with f and select all text
-        if (e.key === 'f') {
-          e.preventDefault();
+      // Focus input with f and select all text
+      if (e.key === 'f') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+
+      // Use AI suggestion with g
+      if (e.key === 'g') {
+        e.preventDefault();
+        if (suggestionRef.current) {
+          setMessageText(suggestionRef.current);
           inputRef.current?.focus();
-          inputRef.current?.select();
-          return;
+          // Auto-resize textarea after setting text
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.style.height = 'auto';
+              inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+            }
+          }, 0);
         }
+        return;
+      }
 
-        // Use AI suggestion with g
-        if (e.key === 'g') {
-          e.preventDefault();
-          if (suggestionRef.current) {
-            setMessageText(suggestionRef.current);
-            inputRef.current?.focus();
-            // Auto-resize textarea after setting text
-            setTimeout(() => {
-              if (inputRef.current) {
-                inputRef.current.style.height = 'auto';
-                inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
-              }
-            }, 0);
-          }
-          return;
+      // Go back to inbox with left arrow or h (don't interfere with alt+arrow for word navigation)
+      if (e.key === 'ArrowLeft' && !e.altKey) {
+        if (onBack) {
+          onBack();
+          window.history.replaceState(null, '', '/inbox');
+        } else {
+          router.push('/inbox');
         }
-
-        // Go back to inbox with left arrow or h (don't interfere with alt+arrow for word navigation)
-        if (e.key === 'ArrowLeft' && !e.altKey) {
-          if (onBack) {
-            onBack();
-            window.history.replaceState(null, '', '/inbox');
-          } else {
-            router.push('/inbox');
-          }
-        }
-        if (e.key === 'h') {
-          if (onBack) {
-            onBack();
-            window.history.replaceState(null, '', '/inbox');
-          } else {
-            router.push('/inbox');
-          }
-        }
-
-        // Archive with e
-        if (e.key === 'e') {
-          handleArchiveConversation();
+      }
+      if (e.key === 'h') {
+        if (onBack) {
+          onBack();
+          window.history.replaceState(null, '', '/inbox');
+        } else {
+          router.push('/inbox');
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router]);
+  }, [router, onBack]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
@@ -241,40 +233,6 @@ export function ConversationView({
 
   const handleUseSuggestion = () => {
     setMessageText(suggestion);
-  };
-
-  const handleArchiveConversation = async () => {
-    if (isArchiving) return;
-
-    setIsArchiving(true);
-    try {
-      const response = await fetch('/inbox/archive', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chatId: chatId,
-          archived: true,
-        }),
-      });
-
-      if (response.ok) {
-        // Navigate back to inbox after archiving
-        if (onBack) {
-          onBack();
-          window.history.replaceState(null, '', '/inbox');
-        } else {
-          router.push('/inbox');
-        }
-      } else {
-        console.error('Failed to archive conversation');
-      }
-    } catch (error) {
-      console.error('Error archiving conversation:', error);
-    } finally {
-      setIsArchiving(false);
-    }
   };
 
   if (isLoading) {

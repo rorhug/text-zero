@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 
 import { auth } from '@/app/(auth)/auth';
 
