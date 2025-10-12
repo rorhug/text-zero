@@ -19,8 +19,23 @@ export const fetcher = async (url: string) => {
   const response = await fetch(url);
 
   if (!response.ok) {
-    const { code, cause } = await response.json();
-    throw new ChatSDKError(code as ErrorCode, cause);
+    try {
+      // Try to parse error as JSON
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const { code, cause } = await response.json();
+        throw new ChatSDKError(code as ErrorCode, cause);
+      }
+    } catch (error) {
+      // If JSON parsing fails, throw generic error
+      console.error('Failed to parse error response:', error);
+    }
+    
+    // Throw generic error if JSON parsing failed or content is not JSON
+    throw new ChatSDKError(
+      `server_error:api` as ErrorCode,
+      `HTTP ${response.status}: ${response.statusText}`,
+    );
   }
 
   return response.json();
@@ -34,8 +49,23 @@ export async function fetchWithErrorHandlers(
     const response = await fetch(input, init);
 
     if (!response.ok) {
-      const { code, cause } = await response.json();
-      throw new ChatSDKError(code as ErrorCode, cause);
+      try {
+        // Try to parse error as JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const { code, cause } = await response.json();
+          throw new ChatSDKError(code as ErrorCode, cause);
+        }
+      } catch (error) {
+        // If JSON parsing fails, continue to throw generic error
+        console.error('Failed to parse error response:', error);
+      }
+      
+      // Throw generic error if JSON parsing failed or content is not JSON
+      throw new ChatSDKError(
+        `server_error:api` as ErrorCode,
+        `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
 
     return response;
